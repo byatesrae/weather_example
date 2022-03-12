@@ -1,0 +1,16 @@
+version: "3.5"
+services:
+  weather-api:
+    container_name: weather-api
+    image: weather-api
+    build: .
+    working_dir: /opt/app
+    volumes:
+      - .:/opt/app
+    environment:
+      - GOOS=linux
+      - GOCACHE=/tmp
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
+      - WEATHERTSTACK_ACCESS_KEY=${WEATHERTSTACK_ACCESS_KEY}
+    ports:
+        - "${PORT:-8080}:${PORT:-8080}"

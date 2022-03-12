@@ -1,0 +1,13 @@
+FROM golang:1.17.3-alpine3.14
+
+ENV GOCACHE=/tmp
+ENV GOOS=linux
+
+RUN apk add --no-cache --upgrade \
+    bash \
+    curl \
+    make \
+    grep \
+    g++
+
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.44.2
