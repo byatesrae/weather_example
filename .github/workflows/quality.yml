@@ -1,6 +1,10 @@
 name: quality
 
 on:
+  pull_request:
+    types: [ opened, synchronize, reopened, closed, edited ]
+    branches:
+      - master
   push:
     branches: [ master ]
 
