@@ -16,7 +16,7 @@ docker run \
     -v /var/run/docker.sock:/var/run/docker.sock \
     --entrypoint /bin/bash \
     weather_example_build \
-    $1
+    "-c" "$1"
 
 HOST_UID=$(id -u)
 docker run --rm -v $(pwd):/src busybox:stable chown -R $HOST_UID:$HOST_UID src
