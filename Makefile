@@ -22,10 +22,6 @@ deps-upgrade: ## Installs/upgrades all dependencies
 clean: ## Removes build artifacts and vendor directories
 	./build/run.sh "./build/clean.sh"
 
-.PHONY: generate
-generate: ## Generates all generated code
-	./build/run.sh "go generate ./..."
-
 .PHONY: lint
 lint: ## Runs linting
 	./build/run.sh "./build/lint.sh"
