@@ -35,8 +35,8 @@ func TestServiceCurrentByCityName(t *testing.T) {
 			withClient: New(
 				"",
 				"",
-				NewWithHTTPClient(&mockHTTPClient{
-					do: func(req *http.Request) (*http.Response, error) {
+				NewWithHTTPClient(&HTTPClientMock{
+					DoFunc: func(req *http.Request) (*http.Response, error) {
 						payload, err := json.Marshal(dummyResult)
 						assert.NoError(t, err)
 
@@ -55,8 +55,8 @@ func TestServiceCurrentByCityName(t *testing.T) {
 			withClient: New(
 				"",
 				"",
-				NewWithHTTPClient(&mockHTTPClient{
-					do: func(req *http.Request) (*http.Response, error) {
+				NewWithHTTPClient(&HTTPClientMock{
+					DoFunc: func(req *http.Request) (*http.Response, error) {
 						payload, err := json.Marshal("ABCDEFG")
 						assert.NoError(t, err)
 
@@ -76,8 +76,8 @@ func TestServiceCurrentByCityName(t *testing.T) {
 			withClient: New(
 				"",
 				"",
-				NewWithHTTPClient(&mockHTTPClient{
-					do: func(req *http.Request) (*http.Response, error) {
+				NewWithHTTPClient(&HTTPClientMock{
+					DoFunc: func(req *http.Request) (*http.Response, error) {
 						return nil, errors.New("intentional test error")
 					},
 				}),
@@ -92,8 +92,8 @@ func TestServiceCurrentByCityName(t *testing.T) {
 			withClient: New(
 				"",
 				"",
-				NewWithHTTPClient(&mockHTTPClient{
-					do: func(req *http.Request) (*http.Response, error) {
+				NewWithHTTPClient(&HTTPClientMock{
+					DoFunc: func(req *http.Request) (*http.Response, error) {
 						return &http.Response{StatusCode: http.StatusInternalServerError}, nil
 					},
 				}),
@@ -105,7 +105,7 @@ func TestServiceCurrentByCityName(t *testing.T) {
 		},
 		{
 			name:         "missing_city_name",
-			withClient:   New("", "", NewWithHTTPClient(&mockHTTPClient{})),
+			withClient:   New("", "", NewWithHTTPClient(&HTTPClientMock{})),
 			giveContext:  context.Background(),
 			giveCityName: "",
 			expected:     nil,
@@ -113,7 +113,7 @@ func TestServiceCurrentByCityName(t *testing.T) {
 		},
 		{
 			name:         "nil_context",
-			withClient:   New("", "", NewWithHTTPClient(&mockHTTPClient{})),
+			withClient:   New("", "", NewWithHTTPClient(&HTTPClientMock{})),
 			giveContext:  nil,
 			giveCityName: "Sydney",
 			expected:     nil,
@@ -150,8 +150,8 @@ func TestServiceCurrentByCityName(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
-		client := New("", "", NewWithHTTPClient(&mockHTTPClient{
-			do: func(req *http.Request) (*http.Response, error) {
+		client := New("", "", NewWithHTTPClient(&HTTPClientMock{
+			DoFunc: func(req *http.Request) (*http.Response, error) {
 				<-req.Context().Done()
 
 				return nil, req.Context().Err()

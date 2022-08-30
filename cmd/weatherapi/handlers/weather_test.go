@@ -14,21 +14,6 @@ import (
 	"github.com/byatesrae/weather/internal/providerquery"
 )
 
-// mockWeatherSummaryService mocks WeatherSummaryService
-type mockWeatherSummaryService struct {
-	readWeatherResult func(ctx context.Context, city string) (*providerquery.WeatherResult, error)
-}
-
-var _ WeatherService = (*mockWeatherSummaryService)(nil)
-
-func (m *mockWeatherSummaryService) ReadWeatherResult(ctx context.Context, city string) (*providerquery.WeatherResult, error) {
-	if m.readWeatherResult != nil {
-		return m.readWeatherResult(ctx, city)
-	}
-
-	return nil, errors.New("not implemented")
-}
-
 func TestWeatherHandler(t *testing.T) {
 	t.Parallel()
 
@@ -38,18 +23,18 @@ func TestWeatherHandler(t *testing.T) {
 		CreatedAt: now,
 		Expiry:    now.Add(time.Second * 5),
 	}
-	goodService := &mockWeatherSummaryService{
-		readWeatherResult: func(ctx context.Context, city string) (*providerquery.WeatherResult, error) {
+	goodService := &WeatherServiceMock{
+		ReadWeatherResultFunc: func(ctx context.Context, city string) (*providerquery.WeatherResult, error) {
 			return goodServiceResult, nil
 		},
 	}
-	errService := &mockWeatherSummaryService{
-		readWeatherResult: func(ctx context.Context, city string) (*providerquery.WeatherResult, error) {
+	errService := &WeatherServiceMock{
+		ReadWeatherResultFunc: func(ctx context.Context, city string) (*providerquery.WeatherResult, error) {
 			return nil, errors.New("intentional test error")
 		},
 	}
-	hangService := &mockWeatherSummaryService{
-		readWeatherResult: func(ctx context.Context, city string) (*providerquery.WeatherResult, error) {
+	hangService := &WeatherServiceMock{
+		ReadWeatherResultFunc: func(ctx context.Context, city string) (*providerquery.WeatherResult, error) {
 			<-ctx.Done()
 
 			return nil, ctx.Err()

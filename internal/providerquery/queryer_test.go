@@ -11,28 +11,6 @@ import (
 	"github.com/byatesrae/weather"
 )
 
-// mockCache mocks Cache
-type mockCache struct {
-	get func(ctx context.Context, key interface{}) (interface{}, time.Time, error)
-	set func(ctx context.Context, key, val interface{}, expiry time.Time) error
-}
-
-func (m *mockCache) Get(ctx context.Context, key interface{}) (interface{}, time.Time, error) {
-	if m.get != nil {
-		return m.get(ctx, key)
-	}
-
-	return nil, time.Time{}, nil
-}
-
-func (m *mockCache) Set(ctx context.Context, key, val interface{}, expiry time.Time) error {
-	if m.set != nil {
-		return m.set(ctx, key, val, expiry)
-	}
-
-	return nil
-}
-
 func TestQueryerReadWeatherResult(t *testing.T) {
 	t.Parallel()
 
@@ -44,57 +22,66 @@ func TestQueryerReadWeatherResult(t *testing.T) {
 		Expiry:    clock.now.Add(resultTTL),
 	}
 
-	goodProvider := &mockProvider{
-		getWeatherSummary: func(ctx context.Context, cityName string) (*weather.Summary, error) {
+	goodProvider := &ProviderMock{
+		GetWeatherSummaryFunc: func(ctx context.Context, cityName string) (*weather.Summary, error) {
 			return goodResult.Weather, nil
 		},
-	}
-
-	errProvider := &mockProvider{
-		getWeatherSummary: func(ctx context.Context, cityName string) (*weather.Summary, error) {
-			return nil, errors.New("intentional test error")
+		ProviderNameFunc: func() string {
+			return "goodProvider"
 		},
 	}
 
-	hangingProvider := &mockProvider{
-		getWeatherSummary: func(ctx context.Context, cityName string) (*weather.Summary, error) {
+	errProvider := &ProviderMock{
+		GetWeatherSummaryFunc: func(ctx context.Context, cityName string) (*weather.Summary, error) {
+			return nil, errors.New("intentional test error")
+		},
+		ProviderNameFunc: func() string {
+			return "errProvider"
+		},
+	}
+
+	hangingProvider := &ProviderMock{
+		GetWeatherSummaryFunc: func(ctx context.Context, cityName string) (*weather.Summary, error) {
 			<-ctx.Done()
 
 			return nil, ctx.Err()
 		},
+		ProviderNameFunc: func() string {
+			return "hangingProvider"
+		},
 	}
 
-	emptyCache := &mockCache{
-		get: func(ctx context.Context, key interface{}) (interface{}, time.Time, error) {
+	emptyCache := &CacheMock{
+		GetFunc: func(ctx context.Context, key interface{}) (interface{}, time.Time, error) {
 			return nil, time.Time{}, nil
 		},
-		set: func(ctx context.Context, key, val interface{}, expiry time.Time) error {
+		SetFunc: func(ctx context.Context, key, val interface{}, expiry time.Time) error {
 			return nil
 		},
 	}
-	cacheWithResult := &mockCache{
-		get: func(ctx context.Context, key interface{}) (interface{}, time.Time, error) {
+	cacheWithResult := &CacheMock{
+		GetFunc: func(ctx context.Context, key interface{}) (interface{}, time.Time, error) {
 			return resultCacheEntry{result: goodResult.Weather, createdAt: goodResult.CreatedAt}, goodResult.Expiry, nil
 		},
-		set: func(ctx context.Context, key, val interface{}, expiry time.Time) error {
+		SetFunc: func(ctx context.Context, key, val interface{}, expiry time.Time) error {
 			return nil
 		},
 	}
-	errCache := &mockCache{
-		get: func(ctx context.Context, key interface{}) (interface{}, time.Time, error) {
+	errCache := &CacheMock{
+		GetFunc: func(ctx context.Context, key interface{}) (interface{}, time.Time, error) {
 			return nil, time.Time{}, errors.New("intentional test error")
 		},
-		set: func(ctx context.Context, key, val interface{}, expiry time.Time) error {
+		SetFunc: func(ctx context.Context, key, val interface{}, expiry time.Time) error {
 			return errors.New("intentional test error")
 		},
 	}
-	hangCache := &mockCache{
-		get: func(ctx context.Context, key interface{}) (interface{}, time.Time, error) {
+	hangCache := &CacheMock{
+		GetFunc: func(ctx context.Context, key interface{}) (interface{}, time.Time, error) {
 			<-ctx.Done()
 
 			return nil, time.Time{}, ctx.Err()
 		},
-		set: func(ctx context.Context, key, val interface{}, expiry time.Time) error {
+		SetFunc: func(ctx context.Context, key, val interface{}, expiry time.Time) error {
 			<-ctx.Done()
 
 			return ctx.Err()
