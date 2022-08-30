@@ -2,7 +2,6 @@
 
 set -e
 
-# Run unit tests
 echo " * Linting ..."
 echo
 
