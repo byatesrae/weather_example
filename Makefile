@@ -20,19 +20,19 @@ deps-upgrade: ## Installs/upgrades all dependencies
 
 .PHONY: clean
 clean: ## Removes build artifacts and vendor directories
-	./build/run.sh "./build/clean.sh"
+	./build/run-bash.sh "./build/clean.sh"
 
 .PHONY: lint
 lint: ## Runs linting
-	./build/run.sh "./build/lint.sh"
+	./build/run-bash.sh "./build/lint.sh"
 
 .PHONY: test
 test: ## Run all tests
-	./build/run.sh "./build/test.sh"
+	./build/run-bash.sh "./build/test.sh"
 
 .PHONY: generate-test-coverage
 generate-test-coverage: ## Generates test coverage reports
-	./build/run.sh "./build/generate-test-coverage.sh"
+	./build/run-bash.sh "./build/generate-test-coverage.sh"
 
 .PHONY: run
 run: ## Runs the application (containerised)

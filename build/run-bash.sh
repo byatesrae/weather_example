@@ -13,7 +13,6 @@ docker run \
     --rm \
     -v ${PWD}:/src \
     --workdir="/src" \
-    -v /var/run/docker.sock:/var/run/docker.sock \
     --entrypoint /bin/bash \
     weather_example_build \
     "-c" "$1"
