@@ -2,10 +2,10 @@
 
 set -e
 
-echo " * Running tests ..."
+echo " * Generating code ..."
 echo
 
-go test -race ./...
+go generate ./...
 
 echo
 echo " * Done."

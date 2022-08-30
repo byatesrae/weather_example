@@ -12,6 +12,7 @@ docker build -t weather_example_build ./build/
 docker run \
     --rm \
     -v ${PWD}:/src \
+    --env-file=.env \
     --workdir="/src" \
     --entrypoint /bin/bash \
     weather_example_build \
