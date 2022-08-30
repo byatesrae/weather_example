@@ -75,5 +75,9 @@ func createServer(c *config) *http.Server {
 	r.Path("/healthz").Methods("GET").HandlerFunc(healthzHandler)
 	r.Path("/weather").Methods("GET").Handler(weatherHandler)
 
-	return &http.Server{Addr: fmt.Sprintf(":%v", c.Port), Handler: r}
+	return &http.Server{
+		Addr:              fmt.Sprintf(":%v", c.Port),
+		Handler:           r,
+		ReadHeaderTimeout: time.Second * 1,
+	}
 }
