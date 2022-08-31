@@ -10,5 +10,6 @@ RUN apk add --no-cache --upgrade \
     make \
     grep \
     g++ \
+    git \
     && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.49.0 \
     && go install github.com/matryer/moq@v0.2.7
