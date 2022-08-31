@@ -18,10 +18,10 @@ func getOpenPort() (int, error) {
 
 	port := l.Addr().(*net.TCPAddr).Port
 
-	err = l.Close()
-	if err != nil {
-		return 0, fmt.Errorf("close listener: %w", err)
-	}
+	l.Close()
+	// if err != nil {
+	// 	return 0, fmt.Errorf("close listener: %w", err)
+	// }
 
 	return port, nil
 }
@@ -32,7 +32,7 @@ func doHealthzRequest(ctx context.Context, serverAddress string) (*http.Response
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/v1/healthz", serverAddress), nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/v1/healthz", serverAddress), http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("create healthz request: %w", err)
 	}
