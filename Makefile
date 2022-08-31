@@ -29,6 +29,10 @@ generate-code: env ## Generates all generated code
 lint: env ## Runs linting
 	./build/run-bash.sh "./build/lint.sh"
 
+.PHONY: lint-optional
+lint-optional: env ## Runs linting with more linters and always succeeds
+	./build/run-bash.sh "./build/lint-optional.sh"
+
 .PHONY: test
 test: env ## Run all tests
 	./build/run-bash.sh "./build/test.sh"

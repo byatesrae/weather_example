@@ -1,0 +1,16 @@
+run:
+  modules-download-mode: vendor
+  issues-exit-code: 0
+  tests: true
+
+  timeout: 2m
+  skip-dirs-use-default: true
+      
+linters:
+  enable-all: true
+  disable:
+    - testpackage
+    - exhaustivestruct
+
+issues:
+  new: true
