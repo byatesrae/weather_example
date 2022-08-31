@@ -11,6 +11,7 @@ on:
 jobs:
   quality:
     name: quality
+    if: ${{ false }}  # disable while testing CI
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
