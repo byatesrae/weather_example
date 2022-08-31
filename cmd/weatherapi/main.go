@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -35,7 +36,7 @@ func main() {
 	go func() {
 		logger.Printf("[INF] Server started, listening on %v.\n", server.Addr)
 
-		if err := server.ListenAndServe(); err != nil {
+		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("[ERR] listen: %s\n", err)
 		}
 	}()
