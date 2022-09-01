@@ -1,4 +1,4 @@
-name: golangci-lint-optional
+name: lint-pr
 on:
   pull_request:
     types: [ opened, synchronize, reopened, closed, edited ]

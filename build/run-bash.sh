@@ -22,6 +22,6 @@ docker run \
     --workdir="/src" \
     --entrypoint /bin/bash \
     weather_example_build \
-    "-c" "chown -R root:root /src && $1" # Not ideal using root here
+    "-c" "git config --global --add safe.directory /src && $1" # Git complains about folder ownship without this config
 
 reset_permissions

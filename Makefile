@@ -30,7 +30,7 @@ lint: env ## Runs linting
 	./build/run-bash.sh "./build/lint.sh"
 
 .PHONY: lint-optional
-lint-optional: env ## Runs linting with more linters and always succeeds
+lint-optional: env ## Runs linting with more linters not required for CI to pass.
 	./build/run-bash.sh "./build/lint-optional.sh"
 
 .PHONY: test
