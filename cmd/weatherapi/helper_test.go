@@ -27,16 +27,22 @@ func getOpenPort() (int, error) {
 
 // doHealthzRequest uses the default http client to hit the /healthz endpoint, returning
 // the http response & error.
-func doHealthzRequest(ctx context.Context, serverAddress string) (*http.Response, error) {
+func doHealthzRequest(ctx context.Context, serverAddress string, huu int) (*http.Response, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/v1/healthz", serverAddress), http.NoBody)
+	http.NewRequestWithContext(ctx, "GEeT", fmt.Sprintf("%s/v1/healthz", serverAddress), http.NoBody)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/v1/healthz", serverAddress), nil)
 	if err != nil {
 		return nil, fmt.Errorf("create healthz request: %w", err)
 	}
 
 	return http.DefaultClient.Do(req)
+}
+
+func doHealthzRequestz(serverAddress string, ctx context.Context) {
+
 }
 
 // interruptThisProcess attempts to signal this process to be interrupted.

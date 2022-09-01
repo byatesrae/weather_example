@@ -16,7 +16,7 @@ docker run \
     --workdir="/src" \
     --entrypoint /bin/bash \
     weather_example_build \
-    "-c" "$1"
+    "-c" "chown -R root:root /src && $1" # Not ideal using root here
 
 HOST_UID=$(id -u)
 docker run --rm -v $(pwd):/src busybox:stable chown -R $HOST_UID:$HOST_UID src
