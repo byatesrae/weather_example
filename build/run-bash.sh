@@ -2,6 +2,12 @@
 
 set -e
 
+reset_permissions() {
+    docker run --rm -v $(pwd):/src busybox:stable chown -R $(id -u):$(id -u) src
+}
+
+trap reset_permissions ERR
+
 if [ -z "$1" ]; then 
     echo "ERR: First argument must be command to run.";
     exit 1; 
@@ -18,5 +24,4 @@ docker run \
     weather_example_build \
     "-c" "chown -R root:root /src && $1" # Not ideal using root here
 
-HOST_UID=$(id -u)
-docker run --rm -v $(pwd):/src busybox:stable chown -R $HOST_UID:$HOST_UID src
+reset_permissions
