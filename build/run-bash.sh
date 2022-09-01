@@ -2,6 +2,12 @@
 
 set -e
 
+reset_permissions() {
+    docker run --rm -v $(pwd):/src busybox:stable chown -R $(id -u):$(id -u) src
+}
+
+trap reset_permissions ERR
+
 if [ -z "$1" ]; then 
     echo "ERR: First argument must be command to run.";
     exit 1; 
@@ -16,7 +22,6 @@ docker run \
     --workdir="/src" \
     --entrypoint /bin/bash \
     weather_example_build \
-    "-c" "$1"
+    "-c" "git config --global --add safe.directory /src && $1" # Git complains about folder ownship without this config
 
-HOST_UID=$(id -u)
-docker run --rm -v $(pwd):/src busybox:stable chown -R $HOST_UID:$HOST_UID src
+reset_permissions
