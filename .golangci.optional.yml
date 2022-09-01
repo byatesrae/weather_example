@@ -21,7 +21,6 @@ linters:
   enable-all: true
   disable:
     - testpackage
-    - exhaustivestruct
 
 issues:
   new: true
