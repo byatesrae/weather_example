@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/byatesrae/weather"
 	"github.com/byatesrae/weather/internal/openweather"
@@ -29,7 +30,7 @@ func (p *OpenWeatherProvider) ProviderName() string {
 func (p *OpenWeatherProvider) GetWeatherSummary(ctx context.Context, cityName string) (*weather.Summary, error) {
 	res, err := p.client.WeatherByCityName(ctx, cityName)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get weather by city name : %w", err)
 	}
 
 	return &weather.Summary{

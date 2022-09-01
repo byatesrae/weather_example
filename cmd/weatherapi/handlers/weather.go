@@ -27,17 +27,18 @@ type WeatherService interface {
 func NewWeatherHandler(weatherService WeatherService, loadResultTimeout time.Duration) http.HandlerFunc {
 	logger := log.Default()
 
-	return func(w http.ResponseWriter, r *http.Request) {
-		city := r.URL.Query().Get("city")
+	return func(rw http.ResponseWriter, req *http.Request) {
+		city := req.URL.Query().Get("city")
 		if city == "" {
-			errorResponse(logger, w, "Missing parameter \"city\".", http.StatusBadRequest)
+			errorResponse(logger, rw, "Missing parameter \"city\".", http.StatusBadRequest)
+
 			return
 		}
 
 		if city != supportedCity {
 			errorResponse(
 				logger,
-				w,
+				rw,
 				fmt.Sprintf("City %q is not supported. Only %q is currently supported.", city, supportedCity),
 				http.StatusBadRequest,
 			)
@@ -45,41 +46,41 @@ func NewWeatherHandler(weatherService WeatherService, loadResultTimeout time.Dur
 			return
 		}
 
-		readWeatherCtx, readWeatherCancel := context.WithTimeout(r.Context(), loadResultTimeout)
+		readWeatherCtx, readWeatherCancel := context.WithTimeout(req.Context(), loadResultTimeout)
 		defer readWeatherCancel()
 
 		result, err := weatherService.ReadWeatherResult(readWeatherCtx, city)
 		if err != nil {
 			errorResponse(
 				logger,
-				w,
+				rw,
 				"Woops, something went wrong.",
 				http.StatusInternalServerError,
 			)
 		}
 
 		if result != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("Cache-Control", "public")
-			w.Header().Set("Last-modified", result.CreatedAt.Format(http.TimeFormat))
-			w.Header().Set("Expires", result.Expiry.Format(http.TimeFormat))
+			rw.Header().Set("Content-Type", "application/json")
+			rw.Header().Set("Cache-Control", "public")
+			rw.Header().Set("Last-modified", result.CreatedAt.Format(http.TimeFormat))
+			rw.Header().Set("Expires", result.Expiry.Format(http.TimeFormat))
 
-			if err := json.NewEncoder(w).Encode(result.Weather); err != nil {
+			if err := json.NewEncoder(rw).Encode(result.Weather); err != nil {
 				logger.Printf("[ERR] Failed to encode body: %s\n", err)
 
-				http.Error(w, "", http.StatusInternalServerError)
+				http.Error(rw, "", http.StatusInternalServerError)
 			}
 		}
 	}
 }
 
-func errorResponse(logger *log.Logger, w http.ResponseWriter, message string, code int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
+func errorResponse(logger *log.Logger, rw http.ResponseWriter, message string, code int) {
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(code)
 
-	if err := json.NewEncoder(w).Encode(&ErrorResponse{Message: message}); err != nil {
+	if err := json.NewEncoder(rw).Encode(&ErrorResponse{Message: message}); err != nil {
 		logger.Printf("[ERR] Failed to encode error response body: %s\n", err)
 
-		http.Error(w, message, code)
+		http.Error(rw, message, code)
 	}
 }

@@ -31,7 +31,7 @@ func (c *Client) WeatherByCityName(ctx context.Context, cityName string) (*Weath
 		return nil, errors.New("openweather: cityname is required")
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/weather", c.endpointURL), http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/weather", c.endpointURL), http.NoBody)
 	if err != nil {
 		return nil, errors.Wrap(err, "openweather: create request")
 	}

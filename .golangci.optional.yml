@@ -18,8 +18,14 @@ linters-settings:
       - opinionated
       - performance
       - style
+  tagliatelle:
+    case:
+      rules:
+        json: snake
       
 linters:
   enable-all: true
   disable:
     - testpackage
+    - gci
+    - goerr113

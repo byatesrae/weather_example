@@ -122,7 +122,11 @@ func TestServiceWeatherByCityName(t *testing.T) {
 			expectedErr:  "openweather: create request: net/http: nil Context",
 		},
 	} {
+		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			ctx := tc.giveContext
 			if tc.giveContext != nil {
 				var cancel context.CancelFunc
@@ -143,6 +147,8 @@ func TestServiceWeatherByCityName(t *testing.T) {
 	}
 
 	t.Run("ctx_cancel", func(t *testing.T) {
+		t.Parallel()
+
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 

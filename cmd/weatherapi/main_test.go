@@ -22,7 +22,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("[FTL] [TestMain] Failed to run set env vars: %v", err)
 	}
 
-	stopMain, err := runMain(ctx)
+	stopMain, err := runMain()
 	if err != nil {
 		log.Fatalf("[FTL] [TestMain] Failed to run main(): %v", err)
 	}
@@ -41,13 +41,13 @@ func TestMain(m *testing.M) {
 
 // newTestConfig creates config that can be used in boostraping the server such that
 // it can be tested.
-func newTestConfig() (*config, error) {
+func newTestConfig() (*appConfig, error) {
 	serverPort, err := getOpenPort()
 	if err != nil {
 		return nil, fmt.Errorf("get open port for server: %w", err)
 	}
 
-	return &config{
+	return &appConfig{
 		Port:                  serverPort,
 		OpenweatherAPIKey:     "SET_BY_TESTMAIN",
 		WeatherstackAccessKey: "SET_BY_TESTMAIN",
@@ -55,7 +55,7 @@ func newTestConfig() (*config, error) {
 }
 
 // setEnvVars will set all environment variables required for main() to run successfully.
-func setEnvVars(c *config) error {
+func setEnvVars(c *appConfig) error {
 	if err := os.Setenv("OPENWEATHER_API_KEY", c.OpenweatherAPIKey); err != nil {
 		return fmt.Errorf("set OPENWEATHER_API_KEY: %w", err)
 	}
@@ -73,7 +73,7 @@ func setEnvVars(c *config) error {
 
 // runMain runs main() in a goroutine then blocks until the http API is ready to
 // serve requests.
-func runMain(ctx context.Context) (func(ctx context.Context) error, error) {
+func runMain() (func(ctx context.Context) error, error) {
 	mainDone := make(chan interface{})
 	go func() {
 		time.Sleep(time.Second * 3)

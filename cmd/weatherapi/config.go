@@ -8,8 +8,8 @@ import (
 	"github.com/sethvargo/go-envconfig"
 )
 
-// config is all of the application configuration.
-type config struct {
+// appConfig is all of the application configuration.
+type appConfig struct {
 	// Port the service will be hosted on.
 	Port int `env:"PORT,default=8080"`
 
@@ -30,19 +30,19 @@ type config struct {
 }
 
 // loadConfig loads the application configuration from environment variables.
-func loadConfig(ctx context.Context) (*config, error) {
-	var c config
-	if err := envconfig.Process(ctx, &c); err != nil {
+func loadConfig(ctx context.Context) (*appConfig, error) {
+	var config appConfig
+	if err := envconfig.Process(ctx, &config); err != nil {
 		return nil, errors.Wrap(err, "weatherapi: loading config")
 	}
 
-	if c.OpenweatherAPIKey == "" {
+	if config.OpenweatherAPIKey == "" {
 		return nil, errors.New("weatherapi: environment variable OPENWEATHER_API_KEY is required")
 	}
 
-	if c.WeatherstackAccessKey == "" {
+	if config.WeatherstackAccessKey == "" {
 		return nil, errors.New("weatherapi: environment variable WEATHERTSTACK_ACCESS_KEY is required")
 	}
 
-	return &c, nil
+	return &config, nil
 }
