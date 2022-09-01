@@ -108,7 +108,7 @@ func verifyServerReady(ctx context.Context, serverAddress string) error {
 	var resErr error
 
 	for a := 0; a < 5; a++ {
-		res, resErr = doHealthzRequest(ctx, serverAddress, 0)
+		res, resErr = doHealthzRequest(ctx, serverAddress)
 		if resErr == nil {
 			break
 		}
