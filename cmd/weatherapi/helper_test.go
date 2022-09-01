@@ -41,10 +41,6 @@ func doHealthzRequest(ctx context.Context, serverAddress string, huu int) (*http
 	return http.DefaultClient.Do(req)
 }
 
-func doHealthzRequestz(serverAddress string, ctx context.Context) {
-
-}
-
 // interruptThisProcess attempts to signal this process to be interrupted.
 func interruptThisProcess() error {
 	p, err := os.FindProcess(os.Getpid())
