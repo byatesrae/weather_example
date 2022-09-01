@@ -22,10 +22,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("[FTL] [TestMain] Failed to run set env vars: %v", err)
 	}
 
-	stopMain, err := runMain(ctx)
-	if err != nil {
-		log.Fatalf("[FTL] [TestMain] Failed to run main(): %v", err)
-	}
+	stopMain := runMain()
 
 	if err := verifyServerReady(ctx, fmt.Sprintf("http://127.0.0.1:%v", config.Port)); err != nil {
 		log.Fatalf("[FTL] [TestMain] Failed to verify main() has started: %v", err)
@@ -41,13 +38,13 @@ func TestMain(m *testing.M) {
 
 // newTestConfig creates config that can be used in boostraping the server such that
 // it can be tested.
-func newTestConfig() (*config, error) {
+func newTestConfig() (*appConfig, error) {
 	serverPort, err := getOpenPort()
 	if err != nil {
 		return nil, fmt.Errorf("get open port for server: %w", err)
 	}
 
-	return &config{
+	return &appConfig{
 		Port:                  serverPort,
 		OpenweatherAPIKey:     "SET_BY_TESTMAIN",
 		WeatherstackAccessKey: "SET_BY_TESTMAIN",
@@ -55,16 +52,16 @@ func newTestConfig() (*config, error) {
 }
 
 // setEnvVars will set all environment variables required for main() to run successfully.
-func setEnvVars(c *config) error {
-	if err := os.Setenv("OPENWEATHER_API_KEY", c.OpenweatherAPIKey); err != nil {
+func setEnvVars(config *appConfig) error {
+	if err := os.Setenv("OPENWEATHER_API_KEY", config.OpenweatherAPIKey); err != nil {
 		return fmt.Errorf("set OPENWEATHER_API_KEY: %w", err)
 	}
 
-	if err := os.Setenv("WEATHERTSTACK_ACCESS_KEY", c.WeatherstackAccessKey); err != nil {
+	if err := os.Setenv("WEATHERTSTACK_ACCESS_KEY", config.WeatherstackAccessKey); err != nil {
 		return fmt.Errorf("set WEATHERTSTACK_ACCESS_KEY: %w", err)
 	}
 
-	if err := os.Setenv("PORT", fmt.Sprintf("%v", c.Port)); err != nil {
+	if err := os.Setenv("PORT", fmt.Sprintf("%v", config.Port)); err != nil {
 		return fmt.Errorf("set PORT: %w", err)
 	}
 
@@ -73,7 +70,7 @@ func setEnvVars(c *config) error {
 
 // runMain runs main() in a goroutine then blocks until the http API is ready to
 // serve requests.
-func runMain(ctx context.Context) (func(ctx context.Context) error, error) {
+func runMain() func(ctx context.Context) error {
 	mainDone := make(chan interface{})
 	go func() {
 		time.Sleep(time.Second * 3)
@@ -99,7 +96,7 @@ func runMain(ctx context.Context) (func(ctx context.Context) error, error) {
 		}
 
 		return nil
-	}, nil
+	}
 }
 
 // verifyServerReady verifies that the server is ready to accept requests.

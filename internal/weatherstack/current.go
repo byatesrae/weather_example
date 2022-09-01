@@ -26,7 +26,7 @@ func (c *Client) CurrentByCityName(ctx context.Context, cityName string) (*Curre
 		return nil, errors.New("weatherstack: cityname is required")
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/current", c.endpointURL), http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/current", c.endpointURL), http.NoBody)
 	if err != nil {
 		return nil, errors.Wrap(err, "weatherstack: create request")
 	}

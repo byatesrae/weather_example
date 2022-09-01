@@ -11,14 +11,14 @@ import (
 
 // getOpenPort returns an open port.
 func getOpenPort() (int, error) {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return 0, fmt.Errorf("listen: %w", err)
 	}
 
-	port := l.Addr().(*net.TCPAddr).Port
+	port := listener.Addr().(*net.TCPAddr).Port
 
-	if err := l.Close(); err != nil {
+	if err := listener.Close(); err != nil {
 		return 0, fmt.Errorf("close listener: %w", err)
 	}
 

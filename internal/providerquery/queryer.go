@@ -23,8 +23,7 @@ type WeatherResult struct {
 }
 
 // resultCacheKey is used as a key to cache resultCacheEntry.
-type resultCacheKey struct {
-}
+type resultCacheKey struct{}
 
 // resultCacheEntry wraps a weather summary to be cached.
 type resultCacheEntry struct {
@@ -40,15 +39,27 @@ type Cache interface {
 
 // Queryer will query a list of providers for a weather summary.
 type Queryer struct {
-	logger                          *log.Logger
-	cache                           Cache
-	cacheTimeout                    time.Duration      // Timeout for querying the cache.
-	providers                       []Provider         // A slice of providers to query, ordered by query preference.
-	providerTimeout                 time.Duration      // Timeout for querying an individual provider.
-	queryAllProvidersForWeatherOnce singleflight.Group // Regardless of how many times ReadWeatherResult is called, query providers once (to avoid a thundering heard).
-	resultTTL                       time.Duration      // TTL applied for cached provider results.
-	resultTimeout                   time.Duration      // Timeout for getting a response across all providers.
-	clock                           Clock
+	logger *log.Logger
+	cache  Cache
+
+	// Timeout for querying the cache.
+	cacheTimeout time.Duration
+
+	// A slice of providers to query, ordered by query preference.
+	providers []Provider
+
+	// Timeout for querying an individual provider.
+	providerTimeout time.Duration
+
+	// Regardless of how many times ReadWeatherResult is called, query providers once (to avoid a thundering heard).
+	queryAllProvidersForWeatherOnce singleflight.Group
+
+	// TTL applied for cached provider results.
+	resultTTL     time.Duration
+	resultTimeout time.Duration
+
+	// Timeout for getting a response across all providers.
+	clock Clock
 }
 
 // newOptions are options for the New function.
@@ -64,13 +75,13 @@ func withClock(clock Clock) func(o *newOptions) {
 }
 
 // New creates a new Queryer.
-func New(providers []Provider, cache Cache, options ...func(o *newOptions)) *Queryer {
-	o := &newOptions{
+func New(providers []Provider, cache Cache, overrides ...func(o *newOptions)) *Queryer {
+	options := &newOptions{
 		clock: standardClock{},
 	}
 
-	for _, option := range options {
-		option(o)
+	for _, override := range overrides {
+		override(options)
 	}
 
 	return &Queryer{
@@ -81,7 +92,7 @@ func New(providers []Provider, cache Cache, options ...func(o *newOptions)) *Que
 		providerTimeout: time.Second * 3,
 		resultTTL:       resultTTL,
 		resultTimeout:   time.Second * 10,
-		clock:           o.clock,
+		clock:           options.clock,
 	}
 }
 
@@ -122,7 +133,7 @@ func (q *Queryer) ReadWeatherResult(ctx context.Context, city string) (*WeatherR
 	return result, nil
 }
 
-func (q *Queryer) getCachedReadWeatherResult(ctx context.Context, city string) *WeatherResult {
+func (q *Queryer) getCachedReadWeatherResult(ctx context.Context, _ string) *WeatherResult {
 	cacheGetCtx, cacheGetCancel := context.WithTimeout(ctx, q.cacheTimeout)
 	defer cacheGetCancel()
 
@@ -169,7 +180,11 @@ func (q *Queryer) queryAllProvidersForWeather(ctx context.Context, cityName stri
 	return nil, errors.New("providerquery: no successful provider responses")
 }
 
-func (q *Queryer) queryProviderForWeather(ctx context.Context, cityName string, provider Provider) (*weather.Summary, error) {
+func (q *Queryer) queryProviderForWeather(
+	ctx context.Context,
+	cityName string,
+	provider Provider,
+) (*weather.Summary, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "providerquery: context done before exhausting providers")
 	}
@@ -177,7 +192,12 @@ func (q *Queryer) queryProviderForWeather(ctx context.Context, cityName string, 
 	ctx, cancel := context.WithTimeout(ctx, q.providerTimeout)
 	defer cancel()
 
-	return provider.GetWeatherSummary(ctx, cityName)
+	weatherSummary, err := provider.GetWeatherSummary(ctx, cityName)
+	if err != nil {
+		return nil, errors.Wrap(err, "get weather summary")
+	}
+
+	return weatherSummary, nil
 }
 
 func (q *Queryer) cacheWeatherResult(ctx context.Context, result *WeatherResult) {

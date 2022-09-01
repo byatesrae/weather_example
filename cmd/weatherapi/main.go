@@ -56,29 +56,29 @@ func main() {
 	log.Print("[INF] Server Exited.\n")
 }
 
-func createServer(c *config) *http.Server {
+func createServer(config *appConfig) *http.Server {
 	providerQueryer := providerquery.New(
 		[]providerquery.Provider{
 			providers.NewOpenWeatherProvider(
-				openweather.New(c.OpenweatherEndpointURL, c.OpenweatherAPIKey),
+				openweather.New(config.OpenweatherEndpointURL, config.OpenweatherAPIKey),
 			),
 			providers.NewWeatherStackProvider(
-				weatherstack.New(c.WeatherstackEndpointURL, c.WeatherstackAccessKey),
+				weatherstack.New(config.WeatherstackEndpointURL, config.WeatherstackAccessKey),
 			),
 		},
 		memorycache.New(),
 	)
 
 	healthzHandler := handlers.NewHealthzHandler()
-	weatherHandler := handlers.NewWeatherHandler(providerQueryer, c.ResultTimeout)
+	weatherHandler := handlers.NewWeatherHandler(providerQueryer, config.ResultTimeout)
 
-	r := mux.NewRouter().PathPrefix("/v1").Subrouter()
-	r.Path("/healthz").Methods("GET").HandlerFunc(healthzHandler)
-	r.Path("/weather").Methods("GET").Handler(weatherHandler)
+	router := mux.NewRouter().PathPrefix("/v1").Subrouter()
+	router.Path("/healthz").Methods("GET").HandlerFunc(healthzHandler)
+	router.Path("/weather").Methods("GET").Handler(weatherHandler)
 
 	return &http.Server{
-		Addr:              fmt.Sprintf(":%v", c.Port),
-		Handler:           r,
+		Addr:              fmt.Sprintf(":%v", config.Port),
+		Handler:           router,
 		ReadHeaderTimeout: time.Second * 1,
 	}
 }
