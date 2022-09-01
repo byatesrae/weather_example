@@ -21,7 +21,3 @@ linters:
   enable-all: true
   disable:
     - testpackage
-
-issues:
-  new: true
-  new-from-rev: origin/master
