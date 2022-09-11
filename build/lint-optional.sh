@@ -5,7 +5,7 @@ set -e
 echo " * Linting (optional)..."
 echo
 
-$(go env GOPATH)/bin/golangci-lint run -c ./.golangci.optional.yml -n --new-from-rev master
+$(go env GOPATH)/bin/golangci-lint run -c ./.golangci.optional.yml -n
 
 echo
 echo " * Done."

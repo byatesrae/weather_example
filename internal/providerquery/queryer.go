@@ -11,10 +11,6 @@ import (
 	"github.com/byatesrae/weather"
 )
 
-const (
-	resultTTL = time.Second * 3 // TTL applied for cached provider results.
-)
-
 // WeatherResult contains a weather summary and timeline data.
 type WeatherResult struct {
 	Expiry    time.Time
@@ -55,8 +51,8 @@ type Queryer struct {
 	queryAllProvidersForWeatherOnce singleflight.Group
 
 	// TTL applied for cached provider results.
-	resultTTL     time.Duration
-	resultTimeout time.Duration
+	resultCacheTTL time.Duration
+	resultTimeout  time.Duration
 
 	// Timeout for getting a response across all providers.
 	clock Clock
@@ -64,7 +60,8 @@ type Queryer struct {
 
 // newOptions are options for the New function.
 type newOptions struct {
-	clock Clock
+	clock          Clock
+	resultCacheTTL time.Duration
 }
 
 // withClock sets the clock used in the New function.
@@ -74,10 +71,18 @@ func withClock(clock Clock) func(o *newOptions) {
 	}
 }
 
+// WithResultCacheTTL sets the amount of time a result is cached for.
+func WithResultCacheTTL(resultCacheTTL time.Duration) func(o *newOptions) {
+	return func(o *newOptions) {
+		o.resultCacheTTL = resultCacheTTL
+	}
+}
+
 // New creates a new Queryer.
 func New(providers []Provider, cache Cache, overrides ...func(o *newOptions)) *Queryer {
 	options := &newOptions{
-		clock: standardClock{},
+		clock:          standardClock{},
+		resultCacheTTL: time.Second * 3,
 	}
 
 	for _, override := range overrides {
@@ -90,7 +95,7 @@ func New(providers []Provider, cache Cache, overrides ...func(o *newOptions)) *Q
 		cacheTimeout:    time.Second * 2, // These timeouts should all be configurable.
 		providers:       providers,
 		providerTimeout: time.Second * 3,
-		resultTTL:       resultTTL,
+		resultCacheTTL:  options.resultCacheTTL,
 		resultTimeout:   time.Second * 10,
 		clock:           options.clock,
 	}
@@ -103,8 +108,8 @@ func (q *Queryer) ReadWeatherResult(ctx context.Context, city string) (*WeatherR
 
 	retrievedCachedResult := result != nil
 
-	if !retrievedCachedResult || q.clock.Now().UTC().After(result.Expiry) {
-		// Try and load a new weather summary result.
+	if !retrievedCachedResult || q.clock.Now().After(result.Expiry) {
+		log.Printf("[DBG] Querying all providers")
 
 		queryAllProvidersCtx, queryAllProvidersCancel := context.WithTimeout(ctx, q.resultTimeout)
 		defer queryAllProvidersCancel()
@@ -123,7 +128,7 @@ func (q *Queryer) ReadWeatherResult(ctx context.Context, city string) (*WeatherR
 			result = &WeatherResult{
 				Weather:   newWeather.(*weather.Summary), // should never panic
 				CreatedAt: now,
-				Expiry:    now.Add(q.resultTTL),
+				Expiry:    now.Add(q.resultCacheTTL),
 			}
 
 			go q.cacheWeatherResult(ctx, result)
@@ -142,14 +147,9 @@ func (q *Queryer) getCachedReadWeatherResult(ctx context.Context, _ string) *Wea
 		q.logger.Printf("[ERR] Failed to retrieve result from cache: %s\n", err)
 	}
 
-	retrievedCachedResult := previousWeather != nil
-	cachedResultHasExpired := q.clock.Now().UTC().After(previousExpiry)
-
 	var result *WeatherResult
 
-	if retrievedCachedResult {
-		// Default response to what was previously cached.
-
+	if previousWeather != nil {
 		cachedWeather := previousWeather.(resultCacheEntry) // Should never panic
 		result = &WeatherResult{
 			Weather:   cachedWeather.result,
@@ -157,7 +157,7 @@ func (q *Queryer) getCachedReadWeatherResult(ctx context.Context, _ string) *Wea
 			Expiry:    previousExpiry,
 		}
 
-		log.Printf("[DBG] Cache hit, expired: %v.\n", cachedResultHasExpired)
+		log.Printf("[DBG] Cache hit, expires: %v\n", previousExpiry.Sub(q.clock.Now()))
 	}
 
 	return result

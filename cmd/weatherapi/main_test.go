@@ -4,16 +4,35 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/byatesrae/weather/internal/httphandlermap"
+)
+
+// serverURL is the URL of the server started with go main().
+var serverURL string
+
+// Test doubles.
+var (
+	// openweatherStubServerHandler is a test double shared by tests.
+	openweatherStubServerHandler httphandlermap.Map
+
+	// weatherstackStubServerHandler is a test double shared by tests.
+	weatherstackStubServerHandler httphandlermap.Map
 )
 
 func TestMain(m *testing.M) {
 	ctx := context.Background()
 
-	config, err := newTestConfig()
+	openweatherStubServerHandler := startOpenweatherStubServer()
+	weatherstackStubServerHandler := startWeatherstackStubServer()
+
+	config, err := newTestConfig(openweatherStubServerHandler.URL, weatherstackStubServerHandler.URL)
 	if err != nil {
 		log.Fatalf("[FTL] [TestMain] Failed to run build config: %v", err)
 	}
@@ -24,11 +43,16 @@ func TestMain(m *testing.M) {
 
 	stopMain := runMain()
 
-	if err := verifyServerReady(ctx, fmt.Sprintf("http://127.0.0.1:%v", config.Port)); err != nil {
+	serverURL = fmt.Sprintf("http://127.0.0.1:%v", config.Port)
+
+	if err := verifyServerReady(ctx, serverURL); err != nil {
 		log.Fatalf("[FTL] [TestMain] Failed to verify main() has started: %v", err)
 	}
 
 	m.Run()
+
+	weatherstackStubServerHandler.Close()
+	openweatherStubServerHandler.Close()
 
 	err = stopMain(ctx)
 	if err != nil {
@@ -38,27 +62,42 @@ func TestMain(m *testing.M) {
 
 // newTestConfig creates config that can be used in boostraping the server such that
 // it can be tested.
-func newTestConfig() (*appConfig, error) {
+func newTestConfig(openweatherURL, weatherstackURL string) (*appConfig, error) {
 	serverPort, err := getOpenPort()
 	if err != nil {
 		return nil, fmt.Errorf("get open port for server: %w", err)
 	}
 
 	return &appConfig{
-		Port:                  serverPort,
-		OpenweatherAPIKey:     "SET_BY_TESTMAIN",
-		WeatherstackAccessKey: "SET_BY_TESTMAIN",
+		Port:                    serverPort,
+		OpenweatherEndpointURL:  openweatherURL,
+		OpenweatherAPIKey:       "SET_BY_TESTMAIN",
+		WeatherstackEndpointURL: weatherstackURL,
+		WeatherstackAccessKey:   "SET_BY_TESTMAIN",
+		ResultCacheTTL:          time.Millisecond * 500,
 	}, nil
 }
 
 // setEnvVars will set all environment variables required for main() to run successfully.
 func setEnvVars(config *appConfig) error {
+	if err := os.Setenv("OPENWEATHER_ENDPOINT_URL", config.OpenweatherEndpointURL); err != nil {
+		return fmt.Errorf("set OPENWEATHER_ENDPOINT_URL: %w", err)
+	}
+
 	if err := os.Setenv("OPENWEATHER_API_KEY", config.OpenweatherAPIKey); err != nil {
 		return fmt.Errorf("set OPENWEATHER_API_KEY: %w", err)
 	}
 
+	if err := os.Setenv("WEATHERTSTACK_ENDPOINT_URL", config.WeatherstackEndpointURL); err != nil {
+		return fmt.Errorf("set WEATHERTSTACK_ENDPOINT_URL: %w", err)
+	}
+
 	if err := os.Setenv("WEATHERTSTACK_ACCESS_KEY", config.WeatherstackAccessKey); err != nil {
 		return fmt.Errorf("set WEATHERTSTACK_ACCESS_KEY: %w", err)
+	}
+
+	if err := os.Setenv("RESULT_CACHE_TTL", config.ResultCacheTTL.String()); err != nil {
+		return fmt.Errorf("set RESULT_CACHE_TTL: %w", err)
 	}
 
 	if err := os.Setenv("PORT", fmt.Sprintf("%v", config.Port)); err != nil {
@@ -99,6 +138,70 @@ func runMain() func(ctx context.Context) error {
 	}
 }
 
+// startWeatherstackStubServer starts an httptest.Server using the correlation ID
+// header as a request discriminator.
+func startWeatherstackStubServer() *httptest.Server {
+	weatherstackStubServerHandler.KeyGenFunc = getCorrelationIDOrNil
+
+	s := httptest.NewServer(&weatherstackStubServerHandler)
+
+	log.Printf("[DBG] [TestMain] Weatherstack stub server started, listening on %v", s.URL)
+
+	return s
+}
+
+// startOpenweatherStubServer starts an httptest.Server using the correlation ID
+// header as a request discriminator.
+func startOpenweatherStubServer() *httptest.Server {
+	openweatherStubServerHandler.KeyGenFunc = getCorrelationIDOrNil
+
+	s := httptest.NewServer(&openweatherStubServerHandler)
+
+	log.Printf("[DBG] [TestMain] Openweather stub server started, listening on %v", s.URL)
+
+	return s
+}
+
+func getCorrelationIDOrNil(r *http.Request) any {
+	correlationID := r.Header.Get("X-Correlation-Id")
+
+	if correlationID == "" {
+		return nil
+	}
+
+	return correlationID
+}
+
+// getOpenPort returns an open port.
+func getOpenPort() (int, error) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, fmt.Errorf("listen: %w", err)
+	}
+
+	port := listener.Addr().(*net.TCPAddr).Port // Should never panic
+
+	if err := listener.Close(); err != nil {
+		return 0, fmt.Errorf("close listener: %w", err)
+	}
+
+	return port, nil
+}
+
+// doHealthzRequest uses the default http client to hit the /healthz endpoint, returning
+// the http response & error.
+func doHealthzRequest(ctx context.Context, serverURL string) (*http.Response, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/v1/healthz", serverURL), http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("create healthz request: %w", err)
+	}
+
+	return http.DefaultClient.Do(req)
+}
+
 // verifyServerReady verifies that the server is ready to accept requests.
 func verifyServerReady(ctx context.Context, serverAddress string) error {
 	var res *http.Response
@@ -129,6 +232,16 @@ func verifyServerReady(ctx context.Context, serverAddress string) error {
 	return nil
 }
 
-func TestNoop(t *testing.T) {
-	// Just have one empty test so TestMain runs/validates the server can start/stop.
+// interruptThisProcess attempts to signal this process to be interrupted.
+func interruptThisProcess() error {
+	p, err := os.FindProcess(os.Getpid())
+	if err != nil {
+		return fmt.Errorf("find this process: %w", err)
+	}
+
+	if err := p.Signal(os.Interrupt); err != nil {
+		return fmt.Errorf("send interrupt signal: %w", err)
+	}
+
+	return nil
 }

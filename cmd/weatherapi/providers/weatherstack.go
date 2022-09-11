@@ -30,7 +30,7 @@ func (p *WeatherStackProvider) ProviderName() string {
 func (p *WeatherStackProvider) GetWeatherSummary(ctx context.Context, cityName string) (*weather.Summary, error) {
 	res, err := p.client.CurrentByCityName(ctx, cityName)
 	if err != nil {
-		return nil, fmt.Errorf("current by city name : %w", err)
+		return nil, fmt.Errorf("current by city name: %w", err)
 	}
 
 	return &weather.Summary{

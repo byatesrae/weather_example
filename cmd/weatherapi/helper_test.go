@@ -3,52 +3,79 @@ package main
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
-	"os"
-	"time"
+	"sync/atomic"
+	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
-// getOpenPort returns an open port.
-func getOpenPort() (int, error) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return 0, fmt.Errorf("listen: %w", err)
-	}
+// requestCount is used for generating a unique request ID.
+var requestCount uint64
 
-	port := listener.Addr().(*net.TCPAddr).Port
+// newRequestID generates a unique request ID.
+func newRequestID(t *testing.T) string {
+	t.Helper()
 
-	if err := listener.Close(); err != nil {
-		return 0, fmt.Errorf("close listener: %w", err)
-	}
+	myid := atomic.AddUint64(&requestCount, 1)
 
-	return port, nil
+	requestID := fmt.Sprintf("%s_%06d", t.Name(), myid)
+
+	t.Logf("RequestID: %s", requestID)
+
+	return requestID
 }
 
-// doHealthzRequest uses the default http client to hit the /healthz endpoint, returning
-// the http response & error.
-func doHealthzRequest(ctx context.Context, serverAddress string) (*http.Response, error) {
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
+// registerWeatherstackStub calls weatherstackStubServerRegister.Register(),
+// checks the error and handles the cleanup.
+func registerWeatherstackStub(t *testing.T, requestID string, h http.Handler) {
+	t.Helper()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/v1/healthz", serverAddress), http.NoBody)
-	if err != nil {
-		return nil, fmt.Errorf("create healthz request: %w", err)
-	}
+	cleanup, err := weatherstackStubServerHandler.Register(requestID, h)
+	require.NoError(t, err, "weatherstackStubServerHandler register error")
 
-	return http.DefaultClient.Do(req)
+	t.Cleanup(cleanup)
 }
 
-// interruptThisProcess attempts to signal this process to be interrupted.
-func interruptThisProcess() error {
-	p, err := os.FindProcess(os.Getpid())
-	if err != nil {
-		return fmt.Errorf("find this process: %w", err)
+// registerOpenweatherStub calls openweatherStubServerHandler.Register(),
+// checks the error and handles the cleanup.
+func registerOpenweatherStub(t *testing.T, requestID string, h http.Handler) {
+	t.Helper()
+
+	cleanup, err := openweatherStubServerHandler.Register(requestID, h)
+	require.NoError(t, err, "openweatherStubServerHandler register error")
+
+	t.Cleanup(cleanup)
+}
+
+// weatherRequest creates an http request for the weather endpoint.
+func weatherRequest(ctx context.Context, t *testing.T, serverURL, city string) *http.Request {
+	t.Helper()
+
+	url := fmt.Sprintf("%s/v1/weather", serverURL)
+
+	if city != "" {
+		url = fmt.Sprintf("%s?city=%s", url, city)
 	}
 
-	if err := p.Signal(os.Interrupt); err != nil {
-		return fmt.Errorf("send interrupt signal: %w", err)
-	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+	require.NoError(t, err, "create weather request")
 
-	return nil
+	return req
+}
+
+// stubHandler creates a new http handler that returns a status code & body.
+func stubHandler(t *testing.T, statuscode int, body []byte) http.HandlerFunc {
+	t.Helper()
+
+	return func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(statuscode)
+
+		if len(body) > 0 {
+			c, err := rw.Write(body)
+
+			require.Equal(t, c, len(body), "length of body write")
+			require.NoError(t, err, "body write error")
+		}
+	}
 }

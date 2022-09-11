@@ -27,6 +27,9 @@ type appConfig struct {
 
 	// Timeout for getting a response from providers.
 	ResultTimeout time.Duration `env:"RESULT_TIMEOUT,default=10s"`
+
+	// The amount of time a weather result is cached for.
+	ResultCacheTTL time.Duration `env:"RESULT_CACHE_TTL,default=3s"`
 }
 
 // loadConfig loads the application configuration from environment variables.
