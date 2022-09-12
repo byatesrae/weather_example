@@ -15,11 +15,12 @@ func TestQueryerReadWeatherResult(t *testing.T) {
 	t.Parallel()
 
 	clock := fixedClock{now: time.Date(2020, time.November, 11, 10, 10, 10, 0, time.UTC)}
+	resultCacheTTL := time.Second * 1
 
 	goodResult := &WeatherResult{
 		Weather:   &weather.Summary{Temperature: 123.456},
 		CreatedAt: clock.now,
-		Expiry:    clock.now.Add(resultTTL),
+		Expiry:    clock.now.Add(resultCacheTTL),
 	}
 
 	goodProvider := &ProviderMock{
@@ -98,49 +99,49 @@ func TestQueryerReadWeatherResult(t *testing.T) {
 	}{
 		{
 			name:        "success",
-			withQueryer: New([]Provider{goodProvider}, emptyCache, withClock(clock)),
+			withQueryer: New([]Provider{goodProvider}, emptyCache, withClock(clock), WithResultCacheTTL(resultCacheTTL)),
 			giveContext: context.Background(),
 			giveCity:    "ABC",
 			expected:    goodResult,
 		},
 		{
 			name:        "success_cache_error",
-			withQueryer: New([]Provider{goodProvider}, errCache, withClock(clock)),
+			withQueryer: New([]Provider{goodProvider}, errCache, withClock(clock), WithResultCacheTTL(resultCacheTTL)),
 			giveContext: context.Background(),
 			giveCity:    "ABC",
 			expected:    goodResult,
 		},
 		{
 			name:        "success_cache_hang",
-			withQueryer: New([]Provider{goodProvider}, hangCache, withClock(clock)),
+			withQueryer: New([]Provider{goodProvider}, hangCache, withClock(clock), WithResultCacheTTL(resultCacheTTL)),
 			giveContext: context.Background(),
 			giveCity:    "ABC",
 			expected:    goodResult,
 		},
 		{
 			name:        "success_use_cache_provider_err",
-			withQueryer: New([]Provider{errProvider}, cacheWithResult, withClock(clock)),
+			withQueryer: New([]Provider{errProvider}, cacheWithResult, withClock(clock), WithResultCacheTTL(resultCacheTTL)),
 			giveContext: context.Background(),
 			giveCity:    "ABC",
 			expected:    goodResult,
 		},
 		{
 			name:        "success_use_cache_provider_hang",
-			withQueryer: New([]Provider{hangingProvider}, cacheWithResult, withClock(clock)),
+			withQueryer: New([]Provider{hangingProvider}, cacheWithResult, withClock(clock), WithResultCacheTTL(resultCacheTTL)),
 			giveContext: context.Background(),
 			giveCity:    "ABC",
 			expected:    goodResult,
 		},
 		{
 			name:        "provider_err_empty_cache",
-			withQueryer: New([]Provider{errProvider}, emptyCache, withClock(clock)),
+			withQueryer: New([]Provider{errProvider}, emptyCache, withClock(clock), WithResultCacheTTL(resultCacheTTL)),
 			giveContext: context.Background(),
 			giveCity:    "ABC",
 			expectedErr: "providerqueryer: failed to load a new result and no cached result to fall back on",
 		},
 		{
 			name:        "provider_err_cache_err",
-			withQueryer: New([]Provider{errProvider}, errCache, withClock(clock)),
+			withQueryer: New([]Provider{errProvider}, errCache, withClock(clock), WithResultCacheTTL(resultCacheTTL)),
 			giveContext: context.Background(),
 			giveCity:    "ABC",
 			expectedErr: "providerqueryer: failed to load a new result and no cached result to fall back on",
