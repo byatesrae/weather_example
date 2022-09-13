@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
+	"github.com/go-logr/logr"
+
+	"github.com/byatesrae/weather/internal/nooplogr"
 	"github.com/byatesrae/weather/internal/providerquery"
 )
 
@@ -24,10 +26,19 @@ type WeatherService interface {
 }
 
 // NewWeatherHandler creates a new handler that can be used to query a weather summary for a city location.
-func NewWeatherHandler(weatherService WeatherService, loadResultTimeout time.Duration) http.HandlerFunc {
-	logger := log.Default()
+func NewWeatherHandler(
+	weatherService WeatherService,
+	loadResultTimeout time.Duration,
+	getLoggerFromContext func(context.Context) logr.Logger,
+) http.HandlerFunc {
+	noopLogger := nooplogr.New()
 
 	return func(rw http.ResponseWriter, req *http.Request) {
+		logger := noopLogger
+		if getLoggerFromContext != nil {
+			logger = getLoggerFromContext(req.Context())
+		}
+
 		city := req.URL.Query().Get("city")
 		if city == "" {
 			errorResponse(logger, rw, "Missing parameter \"city\".", http.StatusBadRequest)
@@ -66,7 +77,7 @@ func NewWeatherHandler(weatherService WeatherService, loadResultTimeout time.Dur
 			rw.Header().Set("Expires", result.Expiry.Format(http.TimeFormat))
 
 			if err := json.NewEncoder(rw).Encode(result.Weather); err != nil {
-				logger.Printf("[ERR] Failed to encode body: %s\n", err)
+				logger.Error(err, "Failed to encode response body.")
 
 				http.Error(rw, "", http.StatusInternalServerError)
 			}
@@ -74,12 +85,12 @@ func NewWeatherHandler(weatherService WeatherService, loadResultTimeout time.Dur
 	}
 }
 
-func errorResponse(logger *log.Logger, rw http.ResponseWriter, message string, code int) {
+func errorResponse(logger logr.Logger, rw http.ResponseWriter, message string, code int) {
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(code)
 
 	if err := json.NewEncoder(rw).Encode(&ErrorResponse{Message: message}); err != nil {
-		logger.Printf("[ERR] Failed to encode error response body: %s\n", err)
+		logger.Error(err, "Failed to encode error response body.")
 
 		http.Error(rw, message, code)
 	}

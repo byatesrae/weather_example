@@ -22,6 +22,8 @@ type CurrentWeather struct {
 
 // CurrentByCityName returns a summary of the weather for a city.
 func (c *Client) CurrentByCityName(ctx context.Context, cityName string) (*CurrentSuccess, error) {
+	logger := c.getLoggerFromContext(ctx)
+
 	if cityName == "" {
 		return nil, errors.New("weatherstack: cityname is required")
 	}
@@ -51,7 +53,7 @@ func (c *Client) CurrentByCityName(ctx context.Context, cityName string) (*Curre
 		defer func() {
 			err := res.Body.Close()
 			if err != nil {
-				c.logger.Printf("weatherstack: err when closing response body: %s\n", err)
+				logger.Error(err, "Error closing response body.")
 			}
 		}()
 

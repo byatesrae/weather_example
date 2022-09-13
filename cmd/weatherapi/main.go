@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,8 +11,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-logr/logr"
+	"github.com/go-logr/zerologr"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/rs/zerolog"
 
 	"github.com/byatesrae/weather/cmd/weatherapi/handlers"
 	"github.com/byatesrae/weather/cmd/weatherapi/providers"
@@ -23,24 +25,34 @@ import (
 	"github.com/byatesrae/weather/internal/weatherstack"
 )
 
+const (
+	component = "weather-api"
+)
+
 func main() {
+	zerolog.SetGlobalLevel(-10)
+
+	logger := newLogger().WithName(component)
+
 	ctx := context.Background()
-	logger := log.Default()
+	ctx = setLoggerInContext(ctx, logger)
 
 	c, err := loadConfig(ctx)
 	if err != nil {
-		logger.Fatal(err)
+		logger.Error(err, "Failed to load config.")
+		os.Exit(1)
 	}
 
-	logger.Printf("[INF] Config: %+v.\n", c)
+	logger.Info("Config loaded.", "config", c)
 
-	server := createServer(c)
+	server := createServer(logger, c)
 
 	go func() {
-		logger.Printf("[INF] Server started, listening on %v.\n", server.Addr)
+		logger.Info("Server started.", "addr", server.Addr)
 
 		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("[ERR] listen: %s\n", err)
+			logger.Error(err, "Error during listen/serving.")
+			os.Exit(1)
 		}
 	}()
 
@@ -52,14 +64,21 @@ func main() {
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("[ERR] shutdown: %s\n", err)
+		logger.Error(err, "Error during shutdown.")
 		runtime.Goexit()
 	}
 
-	log.Print("[INF] Server Exited.\n")
+	logger.Info("Server exited.")
 }
 
-func createServer(config *appConfig) *http.Server {
+func newLogger() logr.Logger {
+	zl := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339, NoColor: false})
+	zl = zl.With().Timestamp().Logger().Level(-10)
+
+	return zerologr.New(&zl)
+}
+
+func createServer(logger logr.Logger, config *appConfig) *http.Server {
 	providerHTTPClient := http.Client{Timeout: config.ResultTimeout}
 
 	providerQueryer := providerquery.New(
@@ -69,6 +88,7 @@ func createServer(config *appConfig) *http.Server {
 					config.OpenweatherEndpointURL,
 					config.OpenweatherAPIKey,
 					openweather.NewWithHTTPClient(&httpClientWithCorrelationID{innerClient: providerHTTPClient}),
+					openweather.WithGetLoggerFromContext(getLoggerFromContext),
 				),
 			),
 			providers.NewWeatherStackProvider(
@@ -76,18 +96,20 @@ func createServer(config *appConfig) *http.Server {
 					config.WeatherstackEndpointURL,
 					config.WeatherstackAccessKey,
 					weatherstack.NewWithHTTPClient(&httpClientWithCorrelationID{innerClient: providerHTTPClient}),
+					weatherstack.WithGetLoggerFromContext(getLoggerFromContext),
 				),
 			),
 		},
 		memorycache.New(),
 		providerquery.WithResultCacheTTL(config.ResultCacheTTL),
+		providerquery.WithGetLoggerFromContext(getLoggerFromContext),
 	)
 
-	healthzHandler := handlers.NewHealthzHandler()
-	weatherHandler := handlers.NewWeatherHandler(providerQueryer, config.ResultTimeout)
+	healthzHandler := handlers.NewHealthzHandler(getLoggerFromContext)
+	weatherHandler := handlers.NewWeatherHandler(providerQueryer, config.ResultTimeout, getLoggerFromContext)
 
 	router := mux.NewRouter().PathPrefix("/v1").Subrouter()
-	router.Use(correlationIDMiddleware)
+	router.Use(correlationIDMiddleware(logger))
 	router.Path("/healthz").Methods("GET").HandlerFunc(healthzHandler)
 	router.Path("/weather").Methods("GET").Handler(weatherHandler)
 
@@ -98,20 +120,37 @@ func createServer(config *appConfig) *http.Server {
 	}
 }
 
-type correlationIDKey struct{}
+type correlationIDCtxKey struct{}
 
 // correlationIDMiddleware is middleware that adds a correlation ID to the context.
-func correlationIDMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		correlationID := req.Header.Get("X-Correlation-Id")
-		if correlationID == "" {
-			correlationID = uuid.New().String()
-		}
+func correlationIDMiddleware(logger logr.Logger) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			correlationID := req.Header.Get("X-Correlation-Id")
+			if correlationID == "" {
+				correlationID = uuid.New().String()
+			}
 
-		req = req.WithContext(context.WithValue(req.Context(), correlationIDKey{}, correlationID))
+			ctx := context.WithValue(req.Context(), correlationIDCtxKey{}, correlationID)
+			ctx = setLoggerInContext(ctx, logger.WithValues("correlationID", correlationID))
 
-		next.ServeHTTP(rw, req)
-	})
+			req = req.WithContext(ctx)
+
+			next.ServeHTTP(rw, req)
+		})
+	}
+}
+
+type loggerCtxKey struct{}
+
+// setLoggerInContext returns a copy of parent containing logger.
+func setLoggerInContext(parent context.Context, logger logr.Logger) context.Context {
+	return context.WithValue(parent, loggerCtxKey{}, logger)
+}
+
+// getLoggerFromContext will retrieve the logger from ctx that was set with setLoggerInContext().
+func getLoggerFromContext(ctx context.Context) logr.Logger {
+	return ctx.Value(loggerCtxKey{}).(logr.Logger) // should never panic
 }
 
 // httpClientWithCorrelationID is an http client that adds an "X-Correlation-Id"
@@ -125,7 +164,7 @@ type httpClientWithCorrelationID struct {
 // to the request.
 func (c *httpClientWithCorrelationID) Do(req *http.Request) (*http.Response, error) {
 	if _, ok := req.Header["X-Correlation-Id"]; !ok {
-		requestID := req.Context().Value(correlationIDKey{}).(string) // Should never panic
+		requestID := req.Context().Value(correlationIDCtxKey{}).(string) // Should never panic
 
 		if requestID != "" {
 			req.Header.Set("X-Correlation-Id", requestID)
