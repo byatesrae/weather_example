@@ -27,6 +27,8 @@ type WeatherWind struct {
 
 // WeatherByCityName returns a summary of the weather for a city.
 func (c *Client) WeatherByCityName(ctx context.Context, cityName string) (*WeatherSuccess, error) {
+	logger := c.getLoggerFromContext(ctx)
+
 	if cityName == "" {
 		return nil, errors.New("openweather: cityname is required")
 	}
@@ -56,7 +58,7 @@ func (c *Client) WeatherByCityName(ctx context.Context, cityName string) (*Weath
 		defer func() {
 			err := res.Body.Close()
 			if err != nil {
-				c.logger.Printf("openweather: err when closing response body: %s\n", err)
+				logger.Error(err, "Error closing response body.")
 			}
 		}()
 

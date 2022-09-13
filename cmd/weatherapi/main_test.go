@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/go-logr/logr"
 
 	"github.com/byatesrae/weather/internal/httphandlermap"
 )
@@ -27,26 +28,31 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	logger := newLogger().WithName(fmt.Sprintf("%s-component-test", component))
+
 	ctx := context.Background()
 
-	openweatherStubServerHandler := startOpenweatherStubServer()
-	weatherstackStubServerHandler := startWeatherstackStubServer()
+	openweatherStubServerHandler := startOpenweatherStubServer(logger)
+	weatherstackStubServerHandler := startWeatherstackStubServer(logger)
 
 	config, err := newTestConfig(openweatherStubServerHandler.URL, weatherstackStubServerHandler.URL)
 	if err != nil {
-		log.Fatalf("[FTL] [TestMain] Failed to run build config: %v", err)
+		logger.Error(err, "Failed to create test config, exiting.")
+		os.Exit(1)
 	}
 
 	if err := setEnvVars(config); err != nil {
-		log.Fatalf("[FTL] [TestMain] Failed to run set env vars: %v", err)
+		logger.Error(err, "Failed to set env vars, exiting.")
+		os.Exit(1)
 	}
 
 	stopMain := runMain()
 
 	serverURL = fmt.Sprintf("http://127.0.0.1:%v", config.Port)
 
-	if err := verifyServerReady(ctx, serverURL); err != nil {
-		log.Fatalf("[FTL] [TestMain] Failed to verify main() has started: %v", err)
+	if err := verifyServerReady(ctx, logger, serverURL); err != nil {
+		logger.Error(err, "Failed to verify main() has started, exiting.")
+		os.Exit(1)
 	}
 
 	m.Run()
@@ -56,7 +62,8 @@ func TestMain(m *testing.M) {
 
 	err = stopMain(ctx)
 	if err != nil {
-		log.Fatalf("[FTL] [TestMain] Failed to stop main(): %v", err)
+		logger.Error(err, "Failed to stop main, exiting.")
+		os.Exit(1)
 	}
 }
 
@@ -140,24 +147,24 @@ func runMain() func(ctx context.Context) error {
 
 // startWeatherstackStubServer starts an httptest.Server using the correlation ID
 // header as a request discriminator.
-func startWeatherstackStubServer() *httptest.Server {
+func startWeatherstackStubServer(logger logr.Logger) *httptest.Server {
 	weatherstackStubServerHandler.KeyGenFunc = getCorrelationIDOrNil
 
 	s := httptest.NewServer(&weatherstackStubServerHandler)
 
-	log.Printf("[DBG] [TestMain] Weatherstack stub server started, listening on %v", s.URL)
+	logger.V(1).Info("Weatherstack stub server started.", "addr", s.URL)
 
 	return s
 }
 
 // startOpenweatherStubServer starts an httptest.Server using the correlation ID
 // header as a request discriminator.
-func startOpenweatherStubServer() *httptest.Server {
+func startOpenweatherStubServer(logger logr.Logger) *httptest.Server {
 	openweatherStubServerHandler.KeyGenFunc = getCorrelationIDOrNil
 
 	s := httptest.NewServer(&openweatherStubServerHandler)
 
-	log.Printf("[DBG] [TestMain] Openweather stub server started, listening on %v", s.URL)
+	logger.V(1).Info("Openweather stub server started.", "addr", s.URL)
 
 	return s
 }
@@ -203,7 +210,7 @@ func doHealthzRequest(ctx context.Context, serverURL string) (*http.Response, er
 }
 
 // verifyServerReady verifies that the server is ready to accept requests.
-func verifyServerReady(ctx context.Context, serverAddress string) error {
+func verifyServerReady(ctx context.Context, logger logr.Logger, serverAddress string) error {
 	var res *http.Response
 	var resErr error
 
@@ -213,7 +220,7 @@ func verifyServerReady(ctx context.Context, serverAddress string) error {
 			break
 		}
 
-		log.Printf("[DBG] [TestMain] Failed attempt %v to do healthz request: %v", a+1, resErr)
+		logger.V(1).Info(fmt.Sprintf("Failed attempt %v to do healthz request.", a+1), "error_reason", resErr)
 
 		time.Sleep(time.Second)
 	}
@@ -225,7 +232,7 @@ func verifyServerReady(ctx context.Context, serverAddress string) error {
 	defer func() {
 		err := res.Body.Close()
 		if err != nil {
-			log.Printf("[WAR] [TestMain] Failed to close healthz response body: %v", err)
+			logger.Error(err, "Failed to close healthz response body.")
 		}
 	}()
 
