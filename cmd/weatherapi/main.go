@@ -43,7 +43,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger.Info("Config loaded.", "config", c)
+	logger.Info("Config loaded.", "config", c.masked())
 
 	server := createServer(logger, c)
 

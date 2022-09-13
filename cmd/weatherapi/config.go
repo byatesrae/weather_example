@@ -32,6 +32,20 @@ type appConfig struct {
 	ResultCacheTTL time.Duration `env:"RESULT_CACHE_TTL,default=3s"`
 }
 
+func (c *appConfig) masked() *appConfig {
+	masked := *c
+
+	if masked.OpenweatherAPIKey != "" {
+		masked.OpenweatherAPIKey = "*****"
+	}
+
+	if masked.WeatherstackAccessKey != "" {
+		masked.WeatherstackAccessKey = "*****"
+	}
+
+	return &masked
+}
+
 // loadConfig loads the application configuration from environment variables.
 func loadConfig(ctx context.Context) (*appConfig, error) {
 	var config appConfig
