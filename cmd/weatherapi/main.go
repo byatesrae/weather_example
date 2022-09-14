@@ -16,6 +16,16 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
+	hostmetrics "go.opentelemetry.io/contrib/instrumentation/host"
+	runtimemetrics "go.opentelemetry.io/contrib/instrumentation/runtime"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/prometheus"
+	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
+	"go.opentelemetry.io/otel/sdk/metric/export/aggregation"
+	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
+	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
+	"go.opentelemetry.io/otel/sdk/resource"
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 
 	"github.com/byatesrae/weather/cmd/weatherapi/handlers"
 	"github.com/byatesrae/weather/cmd/weatherapi/providers"
@@ -45,7 +55,13 @@ func main() {
 
 	logger.Info("Config loaded.", "config", c.masked())
 
-	server := createServer(logger, c)
+	prometheusExporter, err := instrument(component, "v0.0.0", "local")
+	if err != nil {
+		logger.Error(err, "Failed to instrument application.")
+		os.Exit(1)
+	}
+
+	server := createServer(logger, c, prometheusExporter)
 
 	go func() {
 		logger.Info("Server started.", "addr", server.Addr)
@@ -78,7 +94,11 @@ func newLogger() logr.Logger {
 	return zerologr.New(&zl)
 }
 
-func createServer(logger logr.Logger, config *appConfig) *http.Server {
+func createServer(
+	logger logr.Logger,
+	config *appConfig,
+	prometheusExporter *prometheus.Exporter,
+) *http.Server {
 	providerHTTPClient := http.Client{Timeout: config.ResultTimeout}
 
 	providerQueryer := providerquery.New(
@@ -108,14 +128,17 @@ func createServer(logger logr.Logger, config *appConfig) *http.Server {
 	healthzHandler := handlers.NewHealthzHandler(getLoggerFromContext)
 	weatherHandler := handlers.NewWeatherHandler(providerQueryer, config.ResultTimeout, getLoggerFromContext)
 
-	router := mux.NewRouter().PathPrefix("/v1").Subrouter()
-	router.Use(correlationIDMiddleware(logger))
-	router.Path("/healthz").Methods("GET").HandlerFunc(healthzHandler)
-	router.Path("/weather").Methods("GET").Handler(weatherHandler)
+	rootRouter := mux.NewRouter()
+	rootRouter.Path("/metrics").HandlerFunc(prometheusExporter.ServeHTTP)
+
+	v1Router := rootRouter.PathPrefix("/v1").Subrouter()
+	v1Router.Use(correlationIDMiddleware(logger))
+	v1Router.Path("/healthz").Methods("GET").HandlerFunc(healthzHandler)
+	v1Router.Path("/weather").Methods("GET").Handler(weatherHandler)
 
 	return &http.Server{
 		Addr:              fmt.Sprintf(":%v", config.Port),
-		Handler:           router,
+		Handler:           rootRouter,
 		ReadHeaderTimeout: time.Second * 1,
 	}
 }
@@ -172,4 +195,52 @@ func (c *httpClientWithCorrelationID) Do(req *http.Request) (*http.Response, err
 	}
 
 	return c.innerClient.Do(req)
+}
+
+// instrument configures an otel metric controller.
+func instrument(serviceName, serviceVersion, deploymentEnvironment string) (*prometheus.Exporter, error) {
+	// Resource
+	res, err := resource.Merge(
+		resource.Default(),
+		resource.NewSchemaless([]attribute.KeyValue{
+			semconv.ServiceNameKey.String(serviceName),
+			semconv.ServiceVersionKey.String(serviceVersion),
+			semconv.DeploymentEnvironmentKey.String(deploymentEnvironment),
+		}...))
+	if err != nil {
+		return nil, fmt.Errorf("create otel resource: %w", err)
+	}
+
+	// Controller (metric provider)
+	metricController := controller.New(
+		processor.NewFactory(
+			selector.NewWithHistogramDistribution(),
+			aggregation.CumulativeTemporalitySelector(),
+		),
+		controller.WithResource(res),
+	)
+
+	// This is required for push exporters and optional for pull exporters. If Start()
+	// is called then controller.ErrControllerStarted errors will start appearing
+	// in the logs as the prometheus exporter tries to controller.Collect() when the
+	// controller is already collecting.
+	// metricController.Start(context.Background())
+
+	if err := runtimemetrics.Start(runtimemetrics.WithMeterProvider(metricController)); err != nil {
+		return nil, fmt.Errorf("start runtime metric gathering: %w", err)
+	}
+
+	if err := hostmetrics.Start(hostmetrics.WithMeterProvider(metricController)); err != nil {
+		return nil, fmt.Errorf("start host metric gathering: %w", err)
+	}
+
+	// Prometheus exporter
+	exporter, err := prometheus.New(
+		prometheus.Config{},
+		metricController)
+	if err != nil {
+		return nil, fmt.Errorf("create prometheus exporter: %w", err)
+	}
+
+	return exporter, nil
 }
