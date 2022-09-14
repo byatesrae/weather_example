@@ -12,5 +12,13 @@ services:
       - GOCACHE=/tmp
       - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
       - WEATHERTSTACK_ACCESS_KEY=${WEATHERTSTACK_ACCESS_KEY}
+      - PORT=8080
     ports:
-        - "${PORT:-8080}:${PORT:-8080}"
+        - "8080:8080"
+  prometheus:
+    container_name: weather-api-prometheus
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - '9090:9090'
