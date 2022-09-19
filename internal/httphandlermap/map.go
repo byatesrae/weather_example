@@ -1,3 +1,5 @@
+// Package httphandlermap contains a HTTP handler map that can be configured to
+// change it's behaviour based on the request it receives.
 package httphandlermap
 
 import (
