@@ -31,6 +31,7 @@ import (
 	"github.com/byatesrae/weather/cmd/weatherapi/providers"
 	"github.com/byatesrae/weather/internal/memorycache"
 	"github.com/byatesrae/weather/internal/openweather"
+	"github.com/byatesrae/weather/internal/otelmetrics"
 	"github.com/byatesrae/weather/internal/providerquery"
 	"github.com/byatesrae/weather/internal/weatherstack"
 )
@@ -47,21 +48,19 @@ func main() {
 	ctx := context.Background()
 	ctx = setLoggerInContext(ctx, logger)
 
-	c, err := loadConfig(ctx)
+	config, err := loadConfig(ctx)
 	if err != nil {
 		logger.Error(err, "Failed to load config.")
 		os.Exit(1)
 	}
 
-	logger.Info("Config loaded.", "config", c.masked())
+	logger.Info("Config loaded.", "config", config.masked())
 
-	prometheusExporter, err := instrument(component, "v0.0.0", "local")
+	server, err := createServer(logger, config)
 	if err != nil {
-		logger.Error(err, "Failed to instrument application.")
+		logger.Error(err, "Failed to create server.")
 		os.Exit(1)
 	}
-
-	server := createServer(logger, c, prometheusExporter)
 
 	go func() {
 		logger.Info("Server started.", "addr", server.Addr)
@@ -97,8 +96,17 @@ func newLogger() logr.Logger {
 func createServer(
 	logger logr.Logger,
 	config *appConfig,
-	prometheusExporter *prometheus.Exporter,
-) *http.Server {
+) (*http.Server, error) {
+	metricController, err := instrument(component, "v0.0.0", "local")
+	if err != nil {
+		return nil, fmt.Errorf("instrument application: %w", err)
+	}
+
+	prometheusExporter, err := exportToPrometheus(metricController)
+	if err != nil {
+		return nil, fmt.Errorf("export to prometheus: %w", err)
+	}
+
 	providerHTTPClient := http.Client{Timeout: config.ResultTimeout}
 
 	providerQueryer := providerquery.New(
@@ -128,11 +136,16 @@ func createServer(
 	healthzHandler := handlers.NewHealthzHandler(getLoggerFromContext)
 	weatherHandler := handlers.NewWeatherHandler(providerQueryer, config.ResultTimeout, getLoggerFromContext)
 
+	metricsMiddleware, err := otelmetrics.MuxMiddleware(metricController.Meter(""))
+	if err != nil {
+		return nil, fmt.Errorf("create mux metrics middleware: %w", err)
+	}
+
 	rootRouter := mux.NewRouter()
 	rootRouter.Path("/metrics").HandlerFunc(prometheusExporter.ServeHTTP)
 
 	v1Router := rootRouter.PathPrefix("/v1").Subrouter()
-	v1Router.Use(correlationIDMiddleware(logger))
+	v1Router.Use(correlationIDMiddleware(logger), metricsMiddleware)
 	v1Router.Path("/healthz").Methods("GET").HandlerFunc(healthzHandler)
 	v1Router.Path("/weather").Methods("GET").Handler(weatherHandler)
 
@@ -140,7 +153,7 @@ func createServer(
 		Addr:              fmt.Sprintf(":%v", config.Port),
 		Handler:           rootRouter,
 		ReadHeaderTimeout: time.Second * 1,
-	}
+	}, nil
 }
 
 type correlationIDCtxKey struct{}
@@ -198,7 +211,7 @@ func (c *httpClientWithCorrelationID) Do(req *http.Request) (*http.Response, err
 }
 
 // instrument configures an otel metric controller.
-func instrument(serviceName, serviceVersion, deploymentEnvironment string) (*prometheus.Exporter, error) {
+func instrument(serviceName, serviceVersion, deploymentEnvironment string) (*controller.Controller, error) {
 	// Resource
 	res, err := resource.Merge(
 		resource.Default(),
@@ -216,6 +229,7 @@ func instrument(serviceName, serviceVersion, deploymentEnvironment string) (*pro
 		processor.NewFactory(
 			selector.NewWithHistogramDistribution(),
 			aggregation.CumulativeTemporalitySelector(),
+			processor.WithMemory(true),
 		),
 		controller.WithResource(res),
 	)
@@ -234,10 +248,11 @@ func instrument(serviceName, serviceVersion, deploymentEnvironment string) (*pro
 		return nil, fmt.Errorf("start host metric gathering: %w", err)
 	}
 
-	// Prometheus exporter
-	exporter, err := prometheus.New(
-		prometheus.Config{},
-		metricController)
+	return metricController, nil
+}
+
+func exportToPrometheus(metricController *controller.Controller) (*prometheus.Exporter, error) {
+	exporter, err := prometheus.New(prometheus.Config{}, metricController)
 	if err != nil {
 		return nil, fmt.Errorf("create prometheus exporter: %w", err)
 	}
