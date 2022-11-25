@@ -62,11 +62,5 @@ The [Provider Queryer](internal/providerquery/queryer.go) has a very simple fail
 ### Robust Provider Integration
 The provider implementations ([Weatherstack](internal/weatherstack/current.go) & [Openweather](internal/openweather/weather.go)) are quite simple. It'd be worth investing time into more thorough integrations. For example, Weatherstack will return a status code 200 (OK) even for non-successful requests. The current integration will assume success on 200, deserialize to the successful response without error and return it with all values zero-valued (0 temperature, 0 wind speed).
 
-### Type Assertion Checks
-There are a few type assertions that don't check the value of the second return value ('ok'). Despite these never possibly panicking in this project, they should be guarded against panic to ensure robustness (and not to mention consistency).
-
-### More Configuration
-There is still room for more application configuration (as opposed to hardcoding values).
-
 ### Richer Error Responses
 Any low level errors encountered in the [weather handler](cmd/weatherapi/handlers/weather.go) are returned as internal errors (500). Ideally, if there is an opportunity to, more expressive errors could be returned.
