@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Installs dependencies.
+# Intended to be invoked from the repository root.
+
 set -e
 
 echo " * Installing dependencies ..."

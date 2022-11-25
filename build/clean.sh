@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Removes build artifacts and vendor directories.
+# Intended to be invoked from the repository root.
+
 set -e
 
 echo " * Cleaning ..."

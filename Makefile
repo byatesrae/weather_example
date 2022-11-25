@@ -27,7 +27,7 @@ lint: ## Runs linting
 	@./build/lint.sh
 
 .PHONY: lint-optional
-lint-optional: ## Runs linting with more linters not required for CI to pass.
+lint-optional: ## Runs linting with more linters that are not required for CI to pass.
 	@./build/lint-optional.sh
 
 .PHONY: test
