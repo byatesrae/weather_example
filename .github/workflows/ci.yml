@@ -1,0 +1,44 @@
+name: ci
+
+on:
+  pull_request:
+    types: [ opened, synchronize, reopened, closed, edited ]
+    branches:
+      - master
+  push:
+    branches: [ master ]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Create .env
+      run: |
+        cat > .env << EOF
+        BUILD_IMAGE=golang
+        GITHUB_TOKEN=TODO_NOT_YET_USED
+        EOF
+    - name: Lint
+      run: ./build/docker/run.sh "make lint"
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Create .env
+      run: |
+        cat > .env << EOF
+        BUILD_IMAGE=golang
+        GITHUB_TOKEN=TODO_NOT_YET_USED
+        EOF
+    - name: Test
+      run: ./build/docker/run.sh "make test"
+    - name: Generate test coverage
+      run: ./build/docker/run.sh "make generate-test-coverage"
+    - name: Upload test coverage
+      uses: actions/upload-artifact@v2
+      with:
+        name: coverage-report
+        path: 'coverage.html'
