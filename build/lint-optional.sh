@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Runs linting with more linters that are not required for CI to pass.
+# Intended to be invoked from the repository root.
+
 set -e
 
 echo " * Linting (optional)..."

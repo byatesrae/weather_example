@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Generates test coverage reports.
+# Intended to be invoked from the repository root.
+
 set -e
 
 echo " * Generating test coverage ..."

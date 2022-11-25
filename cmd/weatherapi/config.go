@@ -10,7 +10,7 @@ import (
 
 // appConfig is all of the application configuration.
 type appConfig struct {
-	// Port the service will be hosted on.
+	// Port the service will be listening on.
 	Port int `env:"PORT,default=8080"`
 
 	// Endpoint for the Openweather provider API endpoint.
