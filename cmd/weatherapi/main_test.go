@@ -1,12 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -46,7 +50,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	stopMain := runMain()
+	stopMain := runMain(config)
 
 	serverURL = fmt.Sprintf("http://127.0.0.1:%v", config.Port)
 
@@ -116,15 +120,57 @@ func setEnvVars(config *appConfig) error {
 
 // runMain runs main() in a goroutine then blocks until the http API is ready to
 // serve requests.
-func runMain() func(ctx context.Context) error {
+func runMain(appConfig *appConfig) func(ctx context.Context) error {
 	mainDone := make(chan interface{})
 	go func() {
 		time.Sleep(time.Second * 3)
 
-		main()
+		// main()
+		// os.Exec go run workdir
 
 		mainDone <- nil
 	}()
+
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*10)
+
+	cmd := exec.CommandContext(ctx, "go", "run", "./")
+	cmd.Env = os.Environ()
+
+	cmd.Env = append(cmd.Env, []string{
+		fmt.Sprintf("OPENWEATHER_ENDPOINT_URL=%s", appConfig.OpenweatherEndpointURL),
+		fmt.Sprintf("OPENWEATHER_API_KEY=%s", appConfig.OpenweatherAPIKey),
+		fmt.Sprintf("WEATHERTSTACK_ENDPOINT_URL=%s", appConfig.WeatherstackEndpointURL),
+		fmt.Sprintf("WEATHERTSTACK_ACCESS_KEY=%s", appConfig.WeatherstackAccessKey),
+		fmt.Sprintf("RESULT_CACHE_TTL=%s", appConfig.ResultCacheTTL.String()),
+		fmt.Sprintf("PORT=%s", fmt.Sprintf("%v", appConfig.Port)),
+	}...)
+
+	var outb, errb bytes.Buffer
+	cmd.Stdout = &outb
+	cmd.Stderr = &errb
+
+	if err := cmd.Start(); err != nil {
+		log.Fatalf("STARTERRRRR: %s", err)
+	}
+
+	fmt.Println("WOO")
+
+	time.Sleep(time.Second * 6)
+	cmd.Process.Signal(os.Interrupt)
+	cmd.Process.Kill()
+	fmt.Println("out:", outb.String(), "err:", errb.String())
+
+	fmt.Println("WEEEEEEEEEE")
+
+	if err := cmd.Wait(); err != nil {
+		log.Println("out:", outb.String(), "err:", errb.String())
+
+		if exitErr := new(exec.ExitError); errors.As(err, &exitErr) {
+			log.Fatalf("WAITEXITERRRRR: %s", string(exitErr.Stderr))
+		}
+
+		log.Fatalf("WAITERRRRR: %s", err)
+	}
 
 	return func(ctx context.Context) error {
 		err := interruptThisProcess()

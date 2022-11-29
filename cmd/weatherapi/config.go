@@ -2,34 +2,36 @@ package main
 
 import (
 	"context"
+	"flag"
+	"os"
 	"time"
 
+	"github.com/byatesrae/weather/internal/platform/config"
 	"github.com/pkg/errors"
-	"github.com/sethvargo/go-envconfig"
 )
 
 // appConfig is all of the application configuration.
 type appConfig struct {
 	// Port the service will be listening on.
-	Port int `env:"PORT,default=8080"`
+	Port int `env:"PORT"`
 
 	// Endpoint for the Openweather provider API endpoint.
 	OpenweatherEndpointURL string `env:"OPENWEATHER_ENDPOINT_URL,default=http://api.openweathermap.org/data/2.5"`
 
 	// API key for the Openweather provider. See https://weatherstack.com/documentation.
-	OpenweatherAPIKey string `env:"OPENWEATHER_API_KEY,required"`
+	OpenweatherAPIKey string `env:"OPENWEATHER_API_KEY"`
 
 	// Endpoint for the Weatherstack provider API endpoint.
 	WeatherstackEndpointURL string `env:"WEATHERTSTACK_ENDPOINT_URL,default=http://api.weatherstack.com"`
 
 	// Access key for the Weatherstack provider. See https://weatherstack.com/documentation.
-	WeatherstackAccessKey string `env:"WEATHERTSTACK_ACCESS_KEY,required"`
+	WeatherstackAccessKey string `env:"WEATHERTSTACK_ACCESS_KEY"`
 
 	// Timeout for getting a response from providers.
 	ResultTimeout time.Duration `env:"RESULT_TIMEOUT,default=10s"`
 
 	// The amount of time a weather result is cached for.
-	ResultCacheTTL time.Duration `env:"RESULT_CACHE_TTL,default=3s"`
+	ResultCacheTTL time.Duration `env:",default=3s"`
 }
 
 func (c *appConfig) masked() *appConfig {
@@ -48,18 +50,68 @@ func (c *appConfig) masked() *appConfig {
 
 // loadConfig loads the application configuration from environment variables.
 func loadConfig(ctx context.Context) (*appConfig, error) {
-	var config appConfig
-	if err := envconfig.Process(ctx, &config); err != nil {
-		return nil, errors.Wrap(err, "weatherapi: loading config")
+	var c appConfig
+
+	variables := config.New(flag.NewFlagSet(component, flag.ContinueOnError))
+	variables.AddIntVar(
+		&c.Port,
+		"Port",
+		8080,
+		"The port the service will be listening on.",
+		config.AddVarWithEnvName("PORT"),
+		config.AddVarWithFlagName("port"),
+	)
+
+	variables.AddStringVar(
+		&c.OpenweatherEndpointURL,
+		"OpenweatherEndpointURL",
+		"http://api.openweathermap.org/data/2.5",
+		"Endpoint for the Openweather provider API endpoint.",
+		config.AddVarWithEnvName("OPENWEATHER_ENDPOINT_URL"),
+		config.AddVarWithFlagName("openweather-endpoint-url"),
+	)
+
+	variables.AddStringVar(
+		&c.OpenweatherAPIKey,
+		"OpenweatherAPIKey",
+		"",
+		"API key for the Openweather provider. See https://weatherstack.com/documentation.",
+		config.AddVarWithEnvName("OPENWEATHER_API_KEY"),
+		config.AddVarWithFlagName("openweather-api-key"),
+	)
+	variables.AddStringVar(&c.WeatherstackEndpointURL, "WeatherstackEndpointURL", "http://api.weatherstack.com", "Endpoint for the Weatherstack provider API endpoint.", config.AddVarWithEnvName("WEATHERTSTACK_ENDPOINT_URL"), config.AddVarWithFlagName("weathertstack-endpoint-url"))
+	variables.AddStringVar(&c.WeatherstackAccessKey, "WeatherstackAccessKey", "", "Access key for the Weatherstack provider. See https://weatherstack.com/documentation.", config.AddVarWithEnvName("WEATHERTSTACK_ACCESS_KEY"), config.AddVarWithFlagName("weathertstack-access-key"))
+	variables.AddDurationVar(&c.ResultTimeout, "ResultTimeout", time.Second*10, "Timeout for getting a response from providers.", config.AddVarWithEnvName("RESULT_TIMEOUT"), config.AddVarWithFlagName("result-timeout"))
+	variables.AddDurationVar(&c.ResultCacheTTL, "ResultCacheTTL", time.Second*3, "The amount of time a weather result is cached for.", config.AddVarWithEnvName("RESULT_CACHE_TTL"), config.AddVarWithFlagName("result-cache-ttl"))
+
+	if err := variables.Parse(os.Args[1:]); err != nil {
+		return nil, errors.Wrap(err, "weatherapi: parsing config")
 	}
 
-	if config.OpenweatherAPIKey == "" {
+	// if err := envconfig.Process(ctx, &config); err != nil {
+	// 	return nil, errors.Wrap(err, "weatherapi: loading config")
+	// }
+
+	// fs := flag.NewFlagSet(component, flag.ContinueOnError)
+	// fs.IntVar(&config.Port, "port", 8080, "The port the service will be listening on.")
+	// fs.StringVar(&config.OpenweatherEndpointURL, "openweather-endpoint-url", "http://api.openweathermap.org/data/2.5", "Endpoint for the Openweather provider API endpoint.")
+	// fs.StringVar(&config.OpenweatherAPIKey, "openweather-api-key", "", "API key for the Openweather provider. See https://weatherstack.com/documentation.")
+	// fs.StringVar(&config.WeatherstackEndpointURL, "weathertstack-endpoint-url", "http://api.weatherstack.com", "Endpoint for the Weatherstack provider API endpoint.")
+	// fs.StringVar(&config.WeatherstackAccessKey, "weathertstack-access-key", "", "Access key for the Weatherstack provider. See https://weatherstack.com/documentation.")
+	// fs.DurationVar(&config.ResultTimeout, "result-timeout", time.Second*10, "Timeout for getting a response from providers.")
+	// fs.DurationVar(&config.ResultCacheTTL, "result-cache-ttl", time.Second*3, "The amount of time a weather result is cached for.")
+
+	// if err := fs.Parse(os.Args[1:]); err != nil {
+	// 	return nil, errors.Wrap(err, "weatherapi: parsing config")
+	// }
+
+	if c.OpenweatherAPIKey == "" {
 		return nil, errors.New("weatherapi: environment variable OPENWEATHER_API_KEY is required")
 	}
 
-	if config.WeatherstackAccessKey == "" {
+	if c.WeatherstackAccessKey == "" {
 		return nil, errors.New("weatherapi: environment variable WEATHERTSTACK_ACCESS_KEY is required")
 	}
 
-	return &config, nil
+	return &c, nil
 }
