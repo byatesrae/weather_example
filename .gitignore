@@ -6,3 +6,5 @@
 **golangci.out
 
 *.env
+
+/bin
