@@ -38,10 +38,12 @@ import (
 
 const (
 	component = "weather-api"
+
+	zerologMinLevel = -10
 )
 
 func main() {
-	zerolog.SetGlobalLevel(-10)
+	zerolog.SetGlobalLevel(zerologMinLevel)
 
 	logger := newLogger().WithName(component)
 
@@ -88,7 +90,7 @@ func main() {
 
 func newLogger() logr.Logger {
 	zl := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339, NoColor: false})
-	zl = zl.With().Timestamp().Logger().Level(-10)
+	zl = zl.With().Timestamp().Logger().Level(zerologMinLevel)
 
 	return zerologr.New(&zl)
 }
