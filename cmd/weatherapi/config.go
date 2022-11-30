@@ -1,13 +1,13 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"os"
 	"time"
 
-	"github.com/byatesrae/weather/internal/platform/config"
 	"github.com/pkg/errors"
+
+	"github.com/byatesrae/weather/internal/platform/config"
 )
 
 // appConfig is all of the application configuration.
@@ -22,16 +22,19 @@ type appConfig struct {
 	OpenweatherAPIKey string `env:"OPENWEATHER_API_KEY"`
 
 	// Endpoint for the Weatherstack provider API endpoint.
-	WeatherstackEndpointURL string `env:"WEATHERTSTACK_ENDPOINT_URL,default=http://api.weatherstack.com"`
+	WeatherstackEndpointURL string `env:"WEATHERSTACK_ENDPOINT_URL,default=http://api.weatherstack.com"`
 
 	// Access key for the Weatherstack provider. See https://weatherstack.com/documentation.
-	WeatherstackAccessKey string `env:"WEATHERTSTACK_ACCESS_KEY"`
+	WeatherstackAccessKey string `env:"WEATHERSTACK_ACCESS_KEY"`
 
 	// Timeout for getting a response from providers.
 	ResultTimeout time.Duration `env:"RESULT_TIMEOUT,default=10s"`
 
 	// The amount of time a weather result is cached for.
 	ResultCacheTTL time.Duration `env:",default=3s"`
+
+	// If true, log messages are colourized.
+	ColourizedOutput bool
 }
 
 func (c *appConfig) masked() *appConfig {
@@ -49,7 +52,7 @@ func (c *appConfig) masked() *appConfig {
 }
 
 // loadConfig loads the application configuration from environment variables.
-func loadConfig(ctx context.Context) (*appConfig, error) {
+func loadConfig() (*appConfig, error) {
 	var c appConfig
 
 	variables := config.New(flag.NewFlagSet(component, flag.ContinueOnError))
@@ -80,9 +83,10 @@ func loadConfig(ctx context.Context) (*appConfig, error) {
 		config.AddVarWithFlagName("openweather-api-key"),
 	)
 	variables.AddStringVar(&c.WeatherstackEndpointURL, "WeatherstackEndpointURL", "http://api.weatherstack.com", "Endpoint for the Weatherstack provider API endpoint.", config.AddVarWithEnvName("WEATHERTSTACK_ENDPOINT_URL"), config.AddVarWithFlagName("weathertstack-endpoint-url"))
-	variables.AddStringVar(&c.WeatherstackAccessKey, "WeatherstackAccessKey", "", "Access key for the Weatherstack provider. See https://weatherstack.com/documentation.", config.AddVarWithEnvName("WEATHERTSTACK_ACCESS_KEY"), config.AddVarWithFlagName("weathertstack-access-key"))
+	variables.AddStringVar(&c.WeatherstackAccessKey, "WeatherstackAccessKey", "", "Access key for the Weatherstack provider. See https://weatherstack.com/documentation.", config.AddVarWithEnvName("WEATHERSTACK_ACCESS_KEY"), config.AddVarWithFlagName("weathertstack-access-key"))
 	variables.AddDurationVar(&c.ResultTimeout, "ResultTimeout", time.Second*10, "Timeout for getting a response from providers.", config.AddVarWithEnvName("RESULT_TIMEOUT"), config.AddVarWithFlagName("result-timeout"))
 	variables.AddDurationVar(&c.ResultCacheTTL, "ResultCacheTTL", time.Second*3, "The amount of time a weather result is cached for.", config.AddVarWithEnvName("RESULT_CACHE_TTL"), config.AddVarWithFlagName("result-cache-ttl"))
+	variables.AddBoolVar(&c.ColourizedOutput, "ColourizedOutput", false, "If true, log messages are colourized.", config.AddVarWithEnvName("COLOURIZED_OUTPUT"), config.AddVarWithFlagName("colourized-output"))
 
 	if err := variables.Parse(os.Args[1:]); err != nil {
 		return nil, errors.Wrap(err, "weatherapi: parsing config")
@@ -110,7 +114,7 @@ func loadConfig(ctx context.Context) (*appConfig, error) {
 	}
 
 	if c.WeatherstackAccessKey == "" {
-		return nil, errors.New("weatherapi: environment variable WEATHERTSTACK_ACCESS_KEY is required")
+		return nil, errors.New("weatherapi: environment variable WEATHERSTACK_ACCESS_KEY is required")
 	}
 
 	return &c, nil

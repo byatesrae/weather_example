@@ -245,3 +245,58 @@ func (v *Variables) AddDurationVar(target *time.Duration, name string, defaultVa
 		},
 	})
 }
+
+func (v *Variables) AddBool(name string, defaultValue bool, usage string, optionOverrides ...func(*AddVarOptions)) *bool {
+	target := new(bool)
+
+	v.AddBoolVar(target, name, defaultValue, usage, optionOverrides...)
+
+	return target
+}
+
+func (v *Variables) AddBoolVar(target *bool, name string, defaultValue bool, usage string, optionOverrides ...func(*AddVarOptions)) {
+	options := AddVarOptions{}
+	for _, optionOverride := range optionOverrides {
+		optionOverride(&options)
+	}
+
+	var flagTarget *bool
+
+	if options.flagName != "" {
+		flagTarget = v.flagset.Bool(name, defaultValue, usage)
+	}
+
+	v.variables = append(v.variables, variable{
+		name:     name,
+		envName:  options.envName,
+		flagName: options.flagName,
+		usage:    usage,
+		setFromFlag: func() {
+			if flagTarget != nil {
+				*target = *flagTarget
+			}
+		},
+		setFromEnv: func() (bool, error) {
+			if options.envName == "" {
+				return false, nil
+			}
+
+			envVal, ok := os.LookupEnv(options.envName)
+			if !ok {
+				return false, nil
+			}
+
+			val, err := strconv.ParseBool(envVal)
+			if err != nil {
+				return false, fmt.Errorf("config: convert \"%s\" to bool: %w", envVal, err)
+			}
+
+			*target = val
+
+			return true, nil
+		},
+		setFromDefault: func() {
+			*target = defaultValue
+		},
+	})
+}

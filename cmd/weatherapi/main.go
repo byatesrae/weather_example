@@ -45,18 +45,20 @@ const (
 func main() {
 	zerolog.SetGlobalLevel(zerologMinLevel)
 
-	logger := newLogger().WithName(component)
+	logger := newLogger(component, false)
 
-	ctx := context.Background()
-	ctx = setLoggerInContext(ctx, logger)
-
-	config, err := loadConfig(ctx)
+	config, err := loadConfig()
 	if err != nil {
 		logger.Error(err, "Failed to load config.")
 		os.Exit(1)
 	}
 
+	logger = newLogger(component, config.ColourizedOutput)
+
 	logger.Info("Config loaded.", "config", config.masked())
+
+	ctx := context.Background()
+	ctx = setLoggerInContext(ctx, logger)
 
 	server, err := createServer(logger, config)
 	if err != nil {
@@ -88,13 +90,15 @@ func main() {
 	}
 
 	logger.Info("Server exited.")
+
+	os.Exit(1)
 }
 
-func newLogger() logr.Logger {
-	zl := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339, NoColor: false})
+func newLogger(name string, colourized bool) logr.Logger {
+	zl := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339, NoColor: !colourized})
 	zl = zl.With().Timestamp().Logger().Level(zerologMinLevel)
 
-	return zerologr.New(&zl)
+	return zerologr.New(&zl).WithName(component)
 }
 
 func createServer(
