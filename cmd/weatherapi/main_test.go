@@ -90,8 +90,8 @@ func getMainArguments(config *appConfig) []string {
 		fmt.Sprintf("-port=%v", config.Port),
 		fmt.Sprintf("-openweather-endpoint-url=%s", config.OpenweatherEndpointURL),
 		fmt.Sprintf("-openweather-api-key=%s", config.OpenweatherAPIKey),
-		fmt.Sprintf("-weathertstack-endpoint-url=%s", config.WeatherstackEndpointURL),
-		fmt.Sprintf("-weathertstack-access-key=%s", config.WeatherstackAccessKey),
+		fmt.Sprintf("-weatherstack-endpoint-url=%s", config.WeatherstackEndpointURL),
+		fmt.Sprintf("-weatherstack-access-key=%s", config.WeatherstackAccessKey),
 		fmt.Sprintf("-result-cache-ttl=%s", config.ResultCacheTTL),
 		fmt.Sprintf("-colourized-output=%v", config.ColourizedOutput),
 	}

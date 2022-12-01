@@ -14,7 +14,7 @@ type variable struct {
 	flagName       string
 	usage          string
 	setFromFlag    func()
-	setFromEnv     func() (bool, error)
+	setFromEnv     func(string) error
 	setFromDefault func()
 }
 
@@ -26,6 +26,14 @@ type Variables struct {
 func New(flagset *flag.FlagSet) *Variables {
 	return &Variables{
 		flagset: flagset,
+	}
+}
+
+func (v *Variables) Usage() {
+	if v.flagset.Name() == "" {
+		fmt.Printf("Usage:\n")
+	} else {
+		fmt.Printf("Usage of %s:\n", v.flagset.Name())
 	}
 }
 
@@ -49,23 +57,13 @@ func (v *Variables) Parse(commandlineArgs []string) error {
 		}
 
 		if variable.envName != "" {
-			strVal, ok := os.LookupEnv(variable.envName)
-			if ok {
-				err := variable.setFromEnv()
-
-				*target = envVal
-
-				return true, nil
-
-				set, err := variable.setFromEnv()
-				if err != nil {
-					return fmt.Errorf("parse environment variable \"%s\": %w", variable.envName, err)
+			if strVal, ok := os.LookupEnv(variable.envName); ok {
+				if err := variable.setFromEnv(strVal); err != nil {
+					return fmt.Errorf("set from environment variable \"%s\": %w", variable.envName, err)
 				}
-			}
-		}
 
-		if set {
-			continue
+				continue
+			}
 		}
 
 		variable.setFromDefault()
@@ -121,19 +119,10 @@ func (v *Variables) AddStringVar(target *string, name, defaultValue, usage strin
 				*target = *flagTarget
 			}
 		},
-		setFromEnv: func() (bool, error) {
-			if options.envName == "" {
-				return false, nil
-			}
-
-			envVal, ok := os.LookupEnv(options.envName)
-			if !ok {
-				return false, nil
-			}
-
+		setFromEnv: func(envVal string) error {
 			*target = envVal
 
-			return true, nil
+			return nil
 		},
 		setFromDefault: func() {
 			*target = defaultValue
@@ -171,24 +160,15 @@ func (v *Variables) AddIntVar(target *int, name string, defaultValue int, usage 
 				*target = *flagTarget
 			}
 		},
-		setFromEnv: func() (bool, error) {
-			if options.envName == "" {
-				return false, nil
-			}
-
-			envVal, ok := os.LookupEnv(options.envName)
-			if !ok {
-				return false, nil
-			}
-
+		setFromEnv: func(envVal string) error {
 			val, err := strconv.Atoi(envVal)
 			if err != nil {
-				return false, fmt.Errorf("config: convert \"%s\" to integer: %w", envVal, err)
+				return fmt.Errorf("config: convert \"%s\" to integer: %w", envVal, err)
 			}
 
 			*target = val
 
-			return true, nil
+			return nil
 		},
 		setFromDefault: func() {
 			*target = defaultValue
@@ -226,24 +206,15 @@ func (v *Variables) AddDurationVar(target *time.Duration, name string, defaultVa
 				*target = *flagTarget
 			}
 		},
-		setFromEnv: func() (bool, error) {
-			if options.envName == "" {
-				return false, nil
-			}
-
-			envVal, ok := os.LookupEnv(options.envName)
-			if !ok {
-				return false, nil
-			}
-
+		setFromEnv: func(envVal string) error {
 			val, err := time.ParseDuration(envVal)
 			if err != nil {
-				return false, fmt.Errorf("config: convert \"%s\" to duration: %w", envVal, err)
+				return fmt.Errorf("config: convert \"%s\" to duration: %w", envVal, err)
 			}
 
 			*target = val
 
-			return true, nil
+			return nil
 		},
 		setFromDefault: func() {
 			*target = defaultValue
@@ -281,24 +252,15 @@ func (v *Variables) AddBoolVar(target *bool, name string, defaultValue bool, usa
 				*target = *flagTarget
 			}
 		},
-		setFromEnv: func() (bool, error) {
-			if options.envName == "" {
-				return false, nil
-			}
-
-			envVal, ok := os.LookupEnv(options.envName)
-			if !ok {
-				return false, nil
-			}
-
+		setFromEnv: func(envVal string) error {
 			val, err := strconv.ParseBool(envVal)
 			if err != nil {
-				return false, fmt.Errorf("config: convert \"%s\" to bool: %w", envVal, err)
+				return fmt.Errorf("config: convert \"%s\" to bool: %w", envVal, err)
 			}
 
 			*target = val
 
-			return true, nil
+			return nil
 		},
 		setFromDefault: func() {
 			*target = defaultValue

@@ -62,7 +62,7 @@ func loadConfig() (*appConfig, error) {
 		&c.OpenweatherAPIKey,
 		"OpenweatherAPIKey",
 		"",
-		"API key for the Openweather provider. See https://weatherstack.com/documentation.",
+		"API key for the Openweather provider. See https://openweathermap.org/current.",
 		config.AddVarWithEnvName("OPENWEATHER_API_KEY"),
 		config.AddVarWithFlagName("openweather-api-key"))
 
@@ -72,7 +72,7 @@ func loadConfig() (*appConfig, error) {
 		"http://api.weatherstack.com",
 		"Endpoint for the Weatherstack provider API endpoint.",
 		config.AddVarWithEnvName("WEATHERTSTACK_ENDPOINT_URL"),
-		config.AddVarWithFlagName("weathertstack-endpoint-url"))
+		config.AddVarWithFlagName("weatherstack-endpoint-url"))
 
 	variables.AddStringVar(
 		&c.WeatherstackAccessKey,
@@ -80,7 +80,7 @@ func loadConfig() (*appConfig, error) {
 		"",
 		"Access key for the Weatherstack provider. See https://weatherstack.com/documentation.",
 		config.AddVarWithEnvName("WEATHERSTACK_ACCESS_KEY"),
-		config.AddVarWithFlagName("weathertstack-access-key"))
+		config.AddVarWithFlagName("weatherstack-access-key"))
 
 	variables.AddDurationVar(
 		&c.ResultTimeout,
@@ -110,10 +110,12 @@ func loadConfig() (*appConfig, error) {
 	}
 
 	if c.OpenweatherAPIKey == "" {
+		variables.Usage()
 		return nil, errors.New("weatherapi: environment variable OPENWEATHER_API_KEY is required")
 	}
 
 	if c.WeatherstackAccessKey == "" {
+		variables.Usage()
 		return nil, errors.New("weatherapi: environment variable WEATHERSTACK_ACCESS_KEY is required")
 	}
 
