@@ -98,7 +98,7 @@ func newLogger(name string, colourized bool) logr.Logger {
 	zl := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339, NoColor: !colourized})
 	zl = zl.With().Timestamp().Logger().Level(zerologMinLevel)
 
-	return zerologr.New(&zl).WithName(component)
+	return zerologr.New(&zl).WithName(name)
 }
 
 func createServer(

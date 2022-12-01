@@ -40,8 +40,8 @@ func (v *Variables) Parse(commandlineArgs []string) error {
 
 	for _, variable := range v.variables {
 		set := false
-		flag.Visit(func(f *flag.Flag) {
-			if variable.envName == f.Name {
+		v.flagset.Visit(func(f *flag.Flag) {
+			if variable.flagName == f.Name {
 				set = true
 			}
 		})
@@ -103,7 +103,7 @@ func (v *Variables) AddStringVar(target *string, name, defaultValue, usage strin
 	var flagTarget *string
 
 	if options.flagName != "" {
-		flagTarget = v.flagset.String(name, defaultValue, usage)
+		flagTarget = v.flagset.String(options.flagName, defaultValue, usage)
 	}
 
 	v.variables = append(v.variables, variable{
@@ -153,7 +153,7 @@ func (v *Variables) AddIntVar(target *int, name string, defaultValue int, usage 
 	var flagTarget *int
 
 	if options.flagName != "" {
-		flagTarget = v.flagset.Int(name, defaultValue, usage)
+		flagTarget = v.flagset.Int(options.flagName, defaultValue, usage)
 	}
 
 	v.variables = append(v.variables, variable{
@@ -208,7 +208,7 @@ func (v *Variables) AddDurationVar(target *time.Duration, name string, defaultVa
 	var flagTarget *time.Duration
 
 	if options.flagName != "" {
-		flagTarget = v.flagset.Duration(name, defaultValue, usage)
+		flagTarget = v.flagset.Duration(options.flagName, defaultValue, usage)
 	}
 
 	v.variables = append(v.variables, variable{
@@ -263,7 +263,7 @@ func (v *Variables) AddBoolVar(target *bool, name string, defaultValue bool, usa
 	var flagTarget *bool
 
 	if options.flagName != "" {
-		flagTarget = v.flagset.Bool(name, defaultValue, usage)
+		flagTarget = v.flagset.Bool(options.flagName, defaultValue, usage)
 	}
 
 	v.variables = append(v.variables, variable{

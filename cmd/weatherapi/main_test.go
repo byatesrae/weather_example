@@ -1,15 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"os/exec"
-	"syscall"
 	"testing"
 	"time"
 
@@ -18,7 +15,7 @@ import (
 	"github.com/byatesrae/weather/internal/httphandlermap"
 )
 
-// serverURL is the URL of the server.
+// serverURL is the URL of the server started with go main().
 var serverURL string
 
 // Test doubles.
@@ -44,27 +41,26 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	stopApp, err := runApp(ctx, config, logger)
-	if err != nil {
-		logger.Error(err, "Failed to run app, exiting.")
-		os.Exit(1)
-	}
-
 	serverURL = fmt.Sprintf("http://127.0.0.1:%v", config.Port)
 
+	originalArgs := os.Args
+	os.Args = getMainArguments(config)
+	stopMain := runMain()
+
 	if err := verifyServerReady(ctx, logger, serverURL); err != nil {
-		logger.Error(err, "Failed to verify server is ready, exiting.")
+		logger.Error(err, "Failed to verify main() has started, exiting.")
 		os.Exit(1)
 	}
 
+	os.Args = originalArgs
 	m.Run()
 
 	weatherstackStubServerHandler.Close()
 	openweatherStubServerHandler.Close()
 
-	err = stopApp(ctx)
+	err = stopMain(ctx)
 	if err != nil {
-		logger.Error(err, "Failed to stop application, exiting.")
+		logger.Error(err, "Failed to stop main, exiting.")
 		os.Exit(1)
 	}
 }
@@ -87,77 +83,49 @@ func newTestConfig(openweatherURL, weatherstackURL string) (*appConfig, error) {
 	}, nil
 }
 
-func getRunAppCommand(ctx context.Context, appConfig *appConfig) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, "go", "run", "./")
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, []string{
-		fmt.Sprintf("OPENWEATHER_ENDPOINT_URL=%s", appConfig.OpenweatherEndpointURL),
-		fmt.Sprintf("OPENWEATHER_API_KEY=%s", appConfig.OpenweatherAPIKey),
-		fmt.Sprintf("WEATHERTSTACK_ENDPOINT_URL=%s", appConfig.WeatherstackEndpointURL),
-		fmt.Sprintf("WEATHERSTACK_ACCESS_KEY=%s", appConfig.WeatherstackAccessKey),
-		fmt.Sprintf("RESULT_CACHE_TTL=%s", appConfig.ResultCacheTTL.String()),
-		fmt.Sprintf("PORT=%s", fmt.Sprintf("%v", appConfig.Port)),
-	}...)
-
-	//TODO
-	//TODO
-	//TODO
-	//TODO
-	//TODO
-	// Dont reappend existing values
-
-	return cmd
+// getMainArguments will get all arguments required for main() to run successfully.
+func getMainArguments(config *appConfig) []string {
+	return []string{
+		os.Args[0],
+		fmt.Sprintf("-port=%v", config.Port),
+		fmt.Sprintf("-openweather-endpoint-url=%s", config.OpenweatherEndpointURL),
+		fmt.Sprintf("-openweather-api-key=%s", config.OpenweatherAPIKey),
+		fmt.Sprintf("-weathertstack-endpoint-url=%s", config.WeatherstackEndpointURL),
+		fmt.Sprintf("-weathertstack-access-key=%s", config.WeatherstackAccessKey),
+		fmt.Sprintf("-result-cache-ttl=%s", config.ResultCacheTTL),
+		fmt.Sprintf("-colourized-output=%v", config.ColourizedOutput),
+	}
 }
 
-// runApp runs the application without blocking. The first return parameter can be
-// used to stop the application.
-func runApp(ctx context.Context, appConfig *appConfig, logger logr.Logger) (func(ctx context.Context) error, error) {
-	cmd := getRunAppCommand(ctx, appConfig)
-
-	var outb, errb bytes.Buffer
-	cmd.Stdout = &outb
-	cmd.Stderr = &errb
-
-	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("start app: %w", err)
-	}
-
-	cmdDone := make(chan interface{})
+// runMain runs main() in a goroutine then blocks until the http API is ready to
+// serve requests.
+func runMain() func(ctx context.Context) error {
+	mainDone := make(chan interface{})
 	go func() {
-		if err := cmd.Wait(); err != nil {
-			logger.Error(err, "error waiting for application to finish", "stdout", outb.String(), "stderr", errb.String())
-		}
+		time.Sleep(time.Second * 3)
 
-		cmdDone <- nil
+		main()
+
+		mainDone <- nil
 	}()
 
 	return func(ctx context.Context) error {
-		p, err := os.FindProcess(-cmd.Process.Pid)
+		err := interruptThisProcess()
 		if err != nil {
-			return fmt.Errorf("find cmd process group: %w", err)
-		}
-
-		if err := p.Signal(os.Interrupt); err != nil {
-			return fmt.Errorf("send interrupt signal: %w", err)
+			return fmt.Errorf("interrupt this process: %w", err)
 		}
 
 		ctx, cancel := context.WithTimeout(ctx, time.Second*3)
 		defer cancel()
 
 		select {
-		case <-cmdDone:
+		case <-mainDone:
 		case <-ctx.Done():
-			err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-			if err != nil {
-				return fmt.Errorf("Application took too long to exit gracefully and an attempt to kill it failed: %w", err)
-			}
-
-			return fmt.Errorf("Application took too long to exit gracefully, killed it instead.")
+			return fmt.Errorf("main() took too long to exit")
 		}
 
 		return nil
-	}, nil
+	}
 }
 
 // startWeatherstackStubServer starts an httptest.Server using the correlation ID
@@ -167,7 +135,7 @@ func startWeatherstackStubServer(logger logr.Logger) *httptest.Server {
 
 	s := httptest.NewServer(&weatherstackStubServerHandler)
 
-	logger.V(1).Info("Weatherstack stub server started.", "addr", s.URL)
+	logger.V(0).Info("Weatherstack stub server started.", "addr", s.URL)
 
 	return s
 }
@@ -179,7 +147,7 @@ func startOpenweatherStubServer(logger logr.Logger) *httptest.Server {
 
 	s := httptest.NewServer(&openweatherStubServerHandler)
 
-	logger.V(1).Info("Openweather stub server started.", "addr", s.URL)
+	logger.V(0).Info("Openweather stub server started.", "addr", s.URL)
 
 	return s
 }
@@ -250,6 +218,20 @@ func verifyServerReady(ctx context.Context, logger logr.Logger, serverAddress st
 			logger.Error(err, "Failed to close healthz response body.")
 		}
 	}()
+
+	return nil
+}
+
+// interruptThisProcess attempts to signal this process to be interrupted.
+func interruptThisProcess() error {
+	p, err := os.FindProcess(os.Getpid())
+	if err != nil {
+		return fmt.Errorf("find this process: %w", err)
+	}
+
+	if err := p.Signal(os.Interrupt); err != nil {
+		return fmt.Errorf("send interrupt signal: %w", err)
+	}
 
 	return nil
 }
