@@ -90,8 +90,6 @@ func main() {
 	}
 
 	logger.Info("Server exited.")
-
-	os.Exit(1)
 }
 
 func newLogger(name string, colourized bool) logr.Logger {

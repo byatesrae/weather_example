@@ -29,10 +29,6 @@ func New(flagset *flag.FlagSet) *Variables {
 	}
 }
 
-func (v Variables) FS() *flag.FlagSet {
-	return v.flagset
-}
-
 func (v *Variables) Parse(commandlineArgs []string) error {
 	if err := v.flagset.Parse(commandlineArgs); err != nil {
 		return fmt.Errorf("config: parse command-line arguments: %w", err)
@@ -52,9 +48,20 @@ func (v *Variables) Parse(commandlineArgs []string) error {
 			continue
 		}
 
-		set, err := variable.setFromEnv()
-		if err != nil {
-			return fmt.Errorf("parse environment variable \"%s\": %w", variable.envName, err)
+		if variable.envName != "" {
+			strVal, ok := os.LookupEnv(variable.envName)
+			if ok {
+				err := variable.setFromEnv()
+
+				*target = envVal
+
+				return true, nil
+
+				set, err := variable.setFromEnv()
+				if err != nil {
+					return fmt.Errorf("parse environment variable \"%s\": %w", variable.envName, err)
+				}
+			}
 		}
 
 		if set {
@@ -85,8 +92,6 @@ func AddVarWithFlagName(flagName string) func(v *AddVarOptions) {
 }
 
 func (v *Variables) AddString(name, defaultValue, usage string, optionOverrides ...func(*AddVarOptions)) *string {
-	// RETURN ERRRRRORRRRRS
-
 	target := new(string)
 
 	v.AddStringVar(target, name, defaultValue, usage, optionOverrides...)
