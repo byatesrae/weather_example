@@ -41,10 +41,10 @@ func (c *appConfig) masked() *appConfig {
 func loadConfig() (*appConfig, error) {
 	c := appConfig{}
 
-	fs := flag.NewFlagSet(component, flag.ContinueOnError)
+	p := startupconfig.Parser{}
 
-	p := startupconfig.Parser{Fs: fs}
-	fs.Usage = p.Usage
+	fs := flag.NewFlagSet(component, flag.ContinueOnError)
+	fs.Usage = p.Usage(fs)
 
 	fs.IntVar(&c.Port, "port", 8080, "The port the service will be listening on.")
 	fs.StringVar(&c.OpenweatherEndpointURL, "openweather-endpoint-url", "http://api.openweathermap.org/data/2.5", "Endpoint for the Openweather provider API endpoint.")
@@ -55,7 +55,7 @@ func loadConfig() (*appConfig, error) {
 	fs.DurationVar(&c.ResultCacheTTL, "result-cache-ttl", time.Second*3, "The amount of time a weather result is cached for.")
 	fs.BoolVar(&c.ColourizedOutput, "colourized-output", false, "If true, log messages are colourized.")
 
-	if err := p.Parse(os.Args[1:]); err != nil {
+	if err := p.Parse(fs, os.Args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			os.Exit(0)
 		}
@@ -64,11 +64,11 @@ func loadConfig() (*appConfig, error) {
 	}
 
 	if c.OpenweatherAPIKey == "" {
-		return nil, fmt.Errorf("weatherapi: validate configuration: %w", p.FlagError("openweather-api-key", fmt.Errorf("value is required")))
+		return nil, fmt.Errorf("weatherapi: validate configuration: %w", p.FlagError(fs, "openweather-api-key", fmt.Errorf("value is required")))
 	}
 
 	if c.WeatherstackAccessKey == "" {
-		return nil, fmt.Errorf("weatherapi: validate configuration: %w", p.FlagError("weatherstack-access-key", fmt.Errorf("value is required")))
+		return nil, fmt.Errorf("weatherapi: validate configuration: %w", p.FlagError(fs, "weatherstack-access-key", fmt.Errorf("value is required")))
 	}
 
 	return &c, nil
