@@ -20,8 +20,8 @@ type Parser struct {
 	FlagNameToEnvVarName func(flagName string) string
 }
 
-// Parse the flags in the flag.FlagSet. This should be used instead of calling the
-// target flag.FlagSet's Parse method.
+// Parse the flags in the flag.FlagSet. This should be used instead of calling fs's
+// Parse method.
 //
 // Parse behaves identical to the flag.FlagSet's Parse method except that if a flag
 // is not set then Parse will attempt to set that flag's value by looking up the
