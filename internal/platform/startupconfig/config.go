@@ -78,7 +78,12 @@ func (p *Parser) Usage() {
 	}
 }
 
-func (p *Parser) FlagError(f *flag.Flag, err error) error {
+func (p *Parser) FlagError(flagName string, err error) error {
+	f := p.Fs.Lookup(flagName)
+	if f == nil {
+		return fmt.Errorf("flag %q does not exist", flagName)
+	}
+
 	msg := fmt.Sprintf("error with flag -%s: %v", f.Name, err)
 	fmt.Fprintln(p.Fs.Output(), msg)
 	p.singleUsage(f)

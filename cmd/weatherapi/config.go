@@ -64,11 +64,11 @@ func loadConfig() (*appConfig, error) {
 	}
 
 	if c.OpenweatherAPIKey == "" {
-		return nil, fmt.Errorf("weatherapi: validate configuration: %w", p.FlagError(fs.Lookup("openweather-api-key"), fmt.Errorf("value is required")))
+		return nil, fmt.Errorf("weatherapi: validate configuration: %w", p.FlagError("openweather-api-key", fmt.Errorf("value is required")))
 	}
 
 	if c.WeatherstackAccessKey == "" {
-		return nil, fmt.Errorf("weatherapi: validate configuration: %w", p.FlagError(fs.Lookup("weatherstack-access-key"), fmt.Errorf("value is required")))
+		return nil, fmt.Errorf("weatherapi: validate configuration: %w", p.FlagError("weatherstack-access-key", fmt.Errorf("value is required")))
 	}
 
 	return &c, nil
