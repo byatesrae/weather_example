@@ -205,7 +205,7 @@ func verifyServerReady(ctx context.Context, logger logr.Logger, serverAddress st
 
 		logger.V(1).Info(fmt.Sprintf("Failed attempt %v to do healthz request.", a+1), "error_reason", resErr)
 
-		time.Sleep(time.Second)
+		time.Sleep(time.Second * 5)
 	}
 
 	if resErr != nil {
