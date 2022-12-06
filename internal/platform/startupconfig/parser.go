@@ -59,6 +59,7 @@ func (p *Parser) Parse(fs *flag.FlagSet, args []string) error {
 
 		if err := fs.Set(f.Name, envVarValue); err != nil {
 			visitAllErr = fmt.Errorf("set flag %q value from environment variable %q: %w", f.Name, envVarName, err)
+
 			return
 		}
 	})
@@ -77,8 +78,6 @@ func (p *Parser) Parse(fs *flag.FlagSet, args []string) error {
 // detail around the environment variables that will be looked up.
 func (p *Parser) Usage(fs *flag.FlagSet) func() {
 	return func() {
-		// See tests for example outputs.
-
 		if fs.Name() == "" {
 			fmt.Fprintf(fs.Output(), "Usage:\n")
 		} else {
@@ -116,9 +115,14 @@ func (p *Parser) FlagError(fs *flag.FlagSet, flagName string, err error) error {
 
 	msg := fmt.Sprintf("error with flag -%s: %v", f.Name, err)
 	fmt.Fprintln(fs.Output(), msg)
-	p.fPrintUsage(fs.Output(), f)
 
-	return fmt.Errorf(msg)
+	if err := p.fPrintUsage(fs.Output(), f); err != nil {
+		fmt.Fprintln(fs.Output())
+
+		fmt.Fprintln(fs.Output(), err)
+	}
+
+	return fmt.Errorf("%s", msg)
 }
 
 // fPrintUsage output's one flag's usage.
@@ -137,8 +141,10 @@ func (p *Parser) fPrintUsage(w io.Writer, f *flag.Flag) error {
 	}
 
 	// output usage
-	b.WriteString("\n    \t")
-	b.WriteString(strings.ReplaceAll(usage, "\n", "\n    \t"))
+	if usage != "" {
+		b.WriteString("\n    \t")
+		b.WriteString(strings.ReplaceAll(usage, "\n", "\n    \t"))
+	}
 
 	// output environment variable usage
 	envVarName := p.flagNameToEnvVarName(f.Name)
@@ -215,7 +221,6 @@ func isZeroValue(f *flag.Flag, s string) (bool, error) {
 
 	flagZeroValue, ok := zeroValue.Interface().(flag.Value)
 	if !ok {
-		// The Value type may itself be an interface type.
 		return false, fmt.Errorf("could not determine if flag %q had a zero value", f.Name)
 	}
 
