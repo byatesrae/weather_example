@@ -19,13 +19,21 @@ The original test criteria were something along the lines of as follows:
 ## Setup
 Run `make env` and then see [.env](.env) for further instruction.
 
-## Usage
+## Development
 ```
 make help
 ```
 
 Make targets can be invoked on your host machine as normal or in a container. See
 [./build/docker/README.md](./build/docker/README.md).
+
+## Usage
+
+Run the app and specify flag "-help".
+
+```
+./bin/weatherapi -help
+```
 
 ## Layout
     .

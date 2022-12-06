@@ -28,7 +28,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	logger := newLogger().WithName(fmt.Sprintf("%s-component-test", component))
+	logger := newLogger(fmt.Sprintf("%s-component-test", component), false)
 
 	ctx := context.Background()
 
@@ -41,20 +41,18 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	if err := setEnvVars(config); err != nil {
-		logger.Error(err, "Failed to set env vars, exiting.")
-		os.Exit(1)
-	}
-
-	stopMain := runMain()
-
 	serverURL = fmt.Sprintf("http://127.0.0.1:%v", config.Port)
+
+	originalArgs := os.Args
+	os.Args = getMainArguments(config)
+	stopMain := runMain()
 
 	if err := verifyServerReady(ctx, logger, serverURL); err != nil {
 		logger.Error(err, "Failed to verify main() has started, exiting.")
 		os.Exit(1)
 	}
 
+	os.Args = originalArgs
 	m.Run()
 
 	weatherstackStubServerHandler.Close()
@@ -85,33 +83,18 @@ func newTestConfig(openweatherURL, weatherstackURL string) (*appConfig, error) {
 	}, nil
 }
 
-// setEnvVars will set all environment variables required for main() to run successfully.
-func setEnvVars(config *appConfig) error {
-	if err := os.Setenv("OPENWEATHER_ENDPOINT_URL", config.OpenweatherEndpointURL); err != nil {
-		return fmt.Errorf("set OPENWEATHER_ENDPOINT_URL: %w", err)
+// getMainArguments will get all arguments required for main() to run successfully.
+func getMainArguments(config *appConfig) []string {
+	return []string{
+		os.Args[0],
+		fmt.Sprintf("-port=%v", config.Port),
+		fmt.Sprintf("-openweather-endpoint-url=%s", config.OpenweatherEndpointURL),
+		fmt.Sprintf("-openweather-api-key=%s", config.OpenweatherAPIKey),
+		fmt.Sprintf("-weatherstack-endpoint-url=%s", config.WeatherstackEndpointURL),
+		fmt.Sprintf("-weatherstack-access-key=%s", config.WeatherstackAccessKey),
+		fmt.Sprintf("-result-cache-ttl=%s", config.ResultCacheTTL),
+		fmt.Sprintf("-colourized-output=%v", config.ColourizedOutput),
 	}
-
-	if err := os.Setenv("OPENWEATHER_API_KEY", config.OpenweatherAPIKey); err != nil {
-		return fmt.Errorf("set OPENWEATHER_API_KEY: %w", err)
-	}
-
-	if err := os.Setenv("WEATHERTSTACK_ENDPOINT_URL", config.WeatherstackEndpointURL); err != nil {
-		return fmt.Errorf("set WEATHERTSTACK_ENDPOINT_URL: %w", err)
-	}
-
-	if err := os.Setenv("WEATHERTSTACK_ACCESS_KEY", config.WeatherstackAccessKey); err != nil {
-		return fmt.Errorf("set WEATHERTSTACK_ACCESS_KEY: %w", err)
-	}
-
-	if err := os.Setenv("RESULT_CACHE_TTL", config.ResultCacheTTL.String()); err != nil {
-		return fmt.Errorf("set RESULT_CACHE_TTL: %w", err)
-	}
-
-	if err := os.Setenv("PORT", fmt.Sprintf("%v", config.Port)); err != nil {
-		return fmt.Errorf("set PORT: %w", err)
-	}
-
-	return nil
 }
 
 // runMain runs main() in a goroutine then blocks until the http API is ready to
@@ -152,7 +135,7 @@ func startWeatherstackStubServer(logger logr.Logger) *httptest.Server {
 
 	s := httptest.NewServer(&weatherstackStubServerHandler)
 
-	logger.V(1).Info("Weatherstack stub server started.", "addr", s.URL)
+	logger.V(0).Info("Weatherstack stub server started.", "addr", s.URL)
 
 	return s
 }
@@ -164,7 +147,7 @@ func startOpenweatherStubServer(logger logr.Logger) *httptest.Server {
 
 	s := httptest.NewServer(&openweatherStubServerHandler)
 
-	logger.V(1).Info("Openweather stub server started.", "addr", s.URL)
+	logger.V(0).Info("Openweather stub server started.", "addr", s.URL)
 
 	return s
 }
@@ -222,7 +205,7 @@ func verifyServerReady(ctx context.Context, logger logr.Logger, serverAddress st
 
 		logger.V(1).Info(fmt.Sprintf("Failed attempt %v to do healthz request.", a+1), "error_reason", resErr)
 
-		time.Sleep(time.Second)
+		time.Sleep(time.Second * 5)
 	}
 
 	if resErr != nil {

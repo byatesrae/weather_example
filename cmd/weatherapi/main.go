@@ -38,23 +38,27 @@ import (
 
 const (
 	component = "weather-api"
+
+	zerologMinLevel = -10
 )
 
 func main() {
-	zerolog.SetGlobalLevel(-10)
+	zerolog.SetGlobalLevel(zerologMinLevel)
 
-	logger := newLogger().WithName(component)
+	logger := newLogger(component, false)
 
-	ctx := context.Background()
-	ctx = setLoggerInContext(ctx, logger)
-
-	config, err := loadConfig(ctx)
+	config, err := loadConfig()
 	if err != nil {
 		logger.Error(err, "Failed to load config.")
 		os.Exit(1)
 	}
 
+	logger = newLogger(component, config.ColourizedOutput)
+
 	logger.Info("Config loaded.", "config", config.masked())
+
+	ctx := context.Background()
+	ctx = setLoggerInContext(ctx, logger)
 
 	server, err := createServer(logger, config)
 	if err != nil {
@@ -75,6 +79,8 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 	<-interrupt
 
+	logger.Info("Interrupted!")
+
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
@@ -86,11 +92,11 @@ func main() {
 	logger.Info("Server exited.")
 }
 
-func newLogger() logr.Logger {
-	zl := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339, NoColor: false})
-	zl = zl.With().Timestamp().Logger().Level(-10)
+func newLogger(name string, colourized bool) logr.Logger {
+	zl := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339, NoColor: !colourized})
+	zl = zl.With().Timestamp().Logger().Level(zerologMinLevel)
 
-	return zerologr.New(&zl)
+	return zerologr.New(&zl).WithName(name)
 }
 
 func createServer(

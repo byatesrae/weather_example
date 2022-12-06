@@ -9,12 +9,12 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.26.1
-	github.com/sethvargo/go-envconfig v0.8.2
 	github.com/stretchr/testify v1.8.0
 	go.opentelemetry.io/contrib/instrumentation/host v0.35.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.34.0
 	go.opentelemetry.io/otel v1.10.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.31.0
+	go.opentelemetry.io/otel/metric v0.31.0
 	go.opentelemetry.io/otel/sdk v1.10.0
 	go.opentelemetry.io/otel/sdk/metric v0.31.0
 	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde
@@ -39,7 +39,6 @@ require (
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.4.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
-	go.opentelemetry.io/otel/metric v0.31.0 // indirect
 	go.opentelemetry.io/otel/trace v1.10.0 // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	google.golang.org/protobuf v1.26.0 // indirect

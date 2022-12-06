@@ -1,35 +1,26 @@
 package main
 
 import (
-	"context"
+	"flag"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/sethvargo/go-envconfig"
+
+	"github.com/byatesrae/weather/internal/platform/startupconfig"
 )
 
 // appConfig is all of the application configuration.
 type appConfig struct {
-	// Port the service will be listening on.
-	Port int `env:"PORT,default=8080"`
-
-	// Endpoint for the Openweather provider API endpoint.
-	OpenweatherEndpointURL string `env:"OPENWEATHER_ENDPOINT_URL,default=http://api.openweathermap.org/data/2.5"`
-
-	// API key for the Openweather provider. See https://weatherstack.com/documentation.
-	OpenweatherAPIKey string `env:"OPENWEATHER_API_KEY,required"`
-
-	// Endpoint for the Weatherstack provider API endpoint.
-	WeatherstackEndpointURL string `env:"WEATHERTSTACK_ENDPOINT_URL,default=http://api.weatherstack.com"`
-
-	// Access key for the Weatherstack provider. See https://weatherstack.com/documentation.
-	WeatherstackAccessKey string `env:"WEATHERTSTACK_ACCESS_KEY,required"`
-
-	// Timeout for getting a response from providers.
-	ResultTimeout time.Duration `env:"RESULT_TIMEOUT,default=10s"`
-
-	// The amount of time a weather result is cached for.
-	ResultCacheTTL time.Duration `env:"RESULT_CACHE_TTL,default=3s"`
+	Port                    int           // Port the service will be listening on.
+	OpenweatherEndpointURL  string        // Endpoint for the Openweather provider API endpoint.
+	OpenweatherAPIKey       string        // API key for the Openweather provider. See https://weatherstack.com/documentation.
+	WeatherstackEndpointURL string        // Endpoint for the Weatherstack provider API endpoint.
+	WeatherstackAccessKey   string        // Access key for the Weatherstack provider. See https://weatherstack.com/documentation.
+	ResultTimeout           time.Duration // Timeout for getting a response from providers.
+	ResultCacheTTL          time.Duration // The amount of time a weather result is cached for.
+	ColourizedOutput        bool          // If true, log messages are colourized.
 }
 
 func (c *appConfig) masked() *appConfig {
@@ -47,19 +38,38 @@ func (c *appConfig) masked() *appConfig {
 }
 
 // loadConfig loads the application configuration from environment variables.
-func loadConfig(ctx context.Context) (*appConfig, error) {
-	var config appConfig
-	if err := envconfig.Process(ctx, &config); err != nil {
-		return nil, errors.Wrap(err, "weatherapi: loading config")
+func loadConfig() (*appConfig, error) {
+	c := appConfig{}
+
+	p := startupconfig.Parser{}
+
+	fs := flag.NewFlagSet(component, flag.ContinueOnError)
+	fs.Usage = p.Usage(fs)
+
+	fs.IntVar(&c.Port, "port", 8080, "The port the service will be listening on.")
+	fs.StringVar(&c.OpenweatherEndpointURL, "openweather-endpoint-url", "http://api.openweathermap.org/data/2.5", "Endpoint for the Openweather provider API endpoint.")
+	fs.StringVar(&c.OpenweatherAPIKey, "openweather-api-key", "", "Required. API key for the Openweather provider. See https://openweathermap.org/current.")
+	fs.StringVar(&c.WeatherstackEndpointURL, "weatherstack-endpoint-url", "http://api.weatherstack.com", "Endpoint for the Weatherstack provider API endpoint.")
+	fs.StringVar(&c.WeatherstackAccessKey, "weatherstack-access-key", "", "Required. Access key for the Weatherstack provider. See https://weatherstack.com/documentation.")
+	fs.DurationVar(&c.ResultTimeout, "result-timeout", time.Second*10, "Timeout for getting a response from providers.")
+	fs.DurationVar(&c.ResultCacheTTL, "result-cache-ttl", time.Second*3, "The amount of time a weather result is cached for.")
+	fs.BoolVar(&c.ColourizedOutput, "colourized-output", false, "If true, log messages are colourized.")
+
+	if err := p.Parse(fs, os.Args[1:]); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			os.Exit(0)
+		}
+
+		return nil, errors.Wrap(err, "weatherapi: parsing config")
 	}
 
-	if config.OpenweatherAPIKey == "" {
-		return nil, errors.New("weatherapi: environment variable OPENWEATHER_API_KEY is required")
+	if c.OpenweatherAPIKey == "" {
+		return nil, fmt.Errorf("weatherapi: validate configuration: %w", p.FlagError(fs, "openweather-api-key", fmt.Errorf("value is required")))
 	}
 
-	if config.WeatherstackAccessKey == "" {
-		return nil, errors.New("weatherapi: environment variable WEATHERTSTACK_ACCESS_KEY is required")
+	if c.WeatherstackAccessKey == "" {
+		return nil, fmt.Errorf("weatherapi: validate configuration: %w", p.FlagError(fs, "weatherstack-access-key", fmt.Errorf("value is required")))
 	}
 
-	return &config, nil
+	return &c, nil
 }
