@@ -30,14 +30,6 @@ trap reset_permissions ERR
 
 source .env
 
-# TODO: Instead of re-building this every time we could build once and host the 
-# image(s) for pull.
-echo " * Building image ..."
-docker build \
-    -t weather_example_build \
-    $( [ -n "$BUILD_IMAGE" ] && printf %s "--build-arg BUILD_IMAGE=$BUILD_IMAGE" ) \
-    ./build/docker/
-
 # Run the bash command(s).
 # TODO - Mount caches with something like...
 # -v $(go env GOMODCACHE):/go/pkg/mod \
@@ -50,7 +42,7 @@ docker run \
     --env-file=.env \
     --workdir="/src" \
     --entrypoint /bin/bash \
-    weather_example_build \
+    coverto/go_build:v1.1.0 \
     "-c" "./build/docker/config.sh; $1" 
 
 reset_permissions
