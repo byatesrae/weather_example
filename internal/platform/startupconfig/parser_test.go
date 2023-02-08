@@ -11,8 +11,6 @@ import (
 )
 
 func TestParserParse(t *testing.T) {
-	t.Parallel()
-
 	// values is just a bag of values, a common type used in testing the parsing.
 	type values struct {
 		firstBool     bool
