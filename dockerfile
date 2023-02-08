@@ -1,5 +1,5 @@
-ARG BUILD_IMAGE=arm64v8/golang
-FROM $BUILD_IMAGE:1.19.2-alpine3.16
+ARG BUILD_IMAGE=coverto/go_build
+FROM $BUILD_IMAGE
 
 WORKDIR /opt/app
 

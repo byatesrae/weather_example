@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# Configures the build/ci environment.
-# This should only be invoked from run.sh.
+# Configures the dockerized environment.
 
 set -e
 
