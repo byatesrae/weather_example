@@ -1,4 +1,4 @@
-name: ci
+name: CI
 
 on:
   pull_request:
@@ -17,11 +17,11 @@ jobs:
     - name: Create .env
       run: |
         cat > .env << EOF
-        BUILD_IMAGE=golang
+        BUILD_IMAGE=coverto/go_build:v1.2.0
         GITHUB_TOKEN=TODO_NOT_YET_USED
         EOF
     - name: Lint
-      run: ./build/docker/run.sh "make lint"
+      run: make lint-dockerized
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -30,13 +30,13 @@ jobs:
     - name: Create .env
       run: |
         cat > .env << EOF
-        BUILD_IMAGE=golang
+        BUILD_IMAGE=coverto/go_build:v1.2.0
         GITHUB_TOKEN=TODO_NOT_YET_USED
         EOF
     - name: Test
-      run: ./build/docker/run.sh "make test"
+      run: make test-dockerized
     - name: Generate test coverage
-      run: ./build/docker/run.sh "make generate-test-coverage"
+      run: make generate-test-coverage-dockerized
     - name: Upload test coverage
       uses: actions/upload-artifact@v2
       with:

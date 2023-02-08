@@ -8,11 +8,9 @@ set -e
 echo " * Hosting documentation ..."
 echo
 
-if [ ! -z $1 ]
-then
-    DOC_PORT=$1
-else
-    DOC_PORT=6060
+if [ -z "$DOCS_PORT" ]; then
+    echo "ERR: environment variable DOCS_PORT is required."        
+    exit 1
 fi
 
 if [ ! -f "go.mod" ]; then
@@ -22,9 +20,9 @@ fi
 
 MODULE=$(cat go.mod | grep -oP '^module\s+\K\S+')
 
-echo " * Visit http://localhost:$DOC_PORT/$MODULE"
+echo " * Visit http://localhost:$DOCS_PORT/$MODULE once server has started."
 
-pkgsite -http :$DOC_PORT
+pkgsite -http :$DOCS_PORT
 
 echo
 echo " * Done."

@@ -24,9 +24,6 @@ Run `make env` and then see [.env](.env) for further instruction.
 make help
 ```
 
-Make targets can be invoked on your host machine as normal or in a container. See
-[./build/docker/README.md](./build/docker/README.md).
-
 ## Usage
 
 Run the app and specify flag "-help".
@@ -39,7 +36,7 @@ Run the app and specify flag "-help".
     .
     ├── cmd                     
     │   └── weatherapi          # Application entrypoint.
-    └── build                   # Scripts used in the build pipeline.
+    └── build                   # Scripts used for build/local development/ci.
 
 ## Testing Manually
 
