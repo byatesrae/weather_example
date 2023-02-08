@@ -22,6 +22,10 @@ clean: ## Removes build artifacts and vendor directories
 generate-code: ## Generates all generated code
 	@./build/generate-code.sh
 
+.PHONY: doc
+doc: ## Runs godoc documentation.
+	@./build/doc.sh
+
 .PHONY: lint
 lint: ## Runs linting
 	@./build/lint.sh

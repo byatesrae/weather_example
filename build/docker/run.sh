@@ -50,6 +50,7 @@ docker run \
     --env-file=.env \
     --workdir="/src" \
     --entrypoint /bin/bash \
+    -p 6060:6060 \
     weather_example_build \
     "-c" "./build/docker/config.sh; $1" 
 
