@@ -21,7 +21,7 @@ jobs:
         GITHUB_TOKEN=TODO_NOT_YET_USED
         EOF
     - name: Lint
-      run: ./build/docker/run.sh "make lint"
+      run: make lint-dockerized
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -34,9 +34,9 @@ jobs:
         GITHUB_TOKEN=TODO_NOT_YET_USED
         EOF
     - name: Test
-      run: ./build/docker/run.sh "make test"
+      run: make test-dockerized
     - name: Generate test coverage
-      run: ./build/docker/run.sh "make generate-test-coverage"
+      run: make generate-test-coverage-dockerized
     - name: Upload test coverage
       uses: actions/upload-artifact@v2
       with:
