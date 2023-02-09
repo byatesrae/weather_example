@@ -17,7 +17,8 @@ The original test criteria were something along the lines of as follows:
 * Docker (tested with 20.10.12).
 
 ## Setup
-Run `make env` and then see [.env](.env) for further instruction.
+1. Run `git submodule update --init --recursive`. 
+1. Run `make env` and then see [.env](.env) for further instruction.
 
 ## Development
 ```
