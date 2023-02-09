@@ -11,19 +11,5 @@ permissions:
   pull-requests: read
   
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/setup-go@v3
-        with:
-          go-version: 1.19
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: v1.49.0
-          args: -c ./build/.golangci.optional.yml --issues-exit-code=0
-          only-new-issues: true
+  lint-pr-workflow:
+    uses: byatesrae/go_build/.github/workflows/lint-pr.yml@master
