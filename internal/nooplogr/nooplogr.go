@@ -1,3 +1,4 @@
+// Package nooplogr allows the instantiation of a no-op implementation of logr.
 package nooplogr
 
 import "github.com/go-logr/logr"
