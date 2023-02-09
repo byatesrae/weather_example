@@ -9,7 +9,7 @@ read_env_file() {
     if [ ! -f  ".env" ]; then
         echo "ERR: \".env\" file not found."
         
-        exit 1; 
+        exit 1
     fi
 
     source .env

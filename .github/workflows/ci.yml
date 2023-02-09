@@ -17,7 +17,7 @@ jobs:
     - name: Create .env
       run: |
         cat > .env << EOF
-        BUILD_IMAGE=coverto/go_build:v1.1.0
+        BUILD_IMAGE=coverto/go_build:v1.2.0
         GITHUB_TOKEN=TODO_NOT_YET_USED
         EOF
     - name: Lint
@@ -30,7 +30,7 @@ jobs:
     - name: Create .env
       run: |
         cat > .env << EOF
-        BUILD_IMAGE=coverto/go_build:v1.1.0
+        BUILD_IMAGE=coverto/go_build:v1.2.0
         GITHUB_TOKEN=TODO_NOT_YET_USED
         EOF
     - name: Test

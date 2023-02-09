@@ -1,3 +1,4 @@
+// Package otelmetrics includes functionality for capturing otel metrics.
 package otelmetrics
 
 import (

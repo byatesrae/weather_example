@@ -42,6 +42,14 @@ generate-code: ## Generates all generated code
 generate-code-dockerized: ## Runs generate-code dockerised.
 	@./build/docker/generate-code.sh
 
+.PHONY: docs
+docs: ## Displays source code documentation.
+	@./build/docs.sh
+
+.PHONY: docs-dockerized
+docs-dockerized: ## Runs docs dockerised.
+	@./build/docker/docs.sh
+
 .PHONY: lint
 lint: ## Runs linting
 	@./build/lint.sh

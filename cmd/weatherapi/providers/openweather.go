@@ -9,14 +9,14 @@ import (
 	"github.com/byatesrae/weather/internal/providerquery"
 )
 
-// OpenWeatherProvider wraps an Openweather client to satisfy the providerquery.Provider interface.
+// OpenWeatherProvider wraps an [openweather.Client] to satisfy the [providerquery.Provider] interface.
 type OpenWeatherProvider struct {
 	client *openweather.Client
 }
 
 var _ providerquery.Provider = (*OpenWeatherProvider)(nil)
 
-// NewOpenWeatherProvider creates a new OpenWeatherProvider.
+// NewOpenWeatherProvider creates a new [OpenWeatherProvider].
 func NewOpenWeatherProvider(w *openweather.Client) *OpenWeatherProvider {
 	return &OpenWeatherProvider{client: w}
 }
@@ -26,7 +26,7 @@ func (p *OpenWeatherProvider) ProviderName() string {
 	return "Openweather"
 }
 
-// GetWeatherSummary gets a weather summary for a city.
+// GetWeatherSummary gets a [weather.Summary] for a city.
 func (p *OpenWeatherProvider) GetWeatherSummary(ctx context.Context, cityName string) (*weather.Summary, error) {
 	res, err := p.client.WeatherByCityName(ctx, cityName)
 	if err != nil {
