@@ -20,10 +20,9 @@ type Parser struct {
 	FlagNameToEnvVarName func(flagName string) string
 }
 
-// Parse the flags in the flag.FlagSet. This should be used instead of calling fs's
-// Parse method.
+// Parse the flags in fs. This should be used instead of calling fs's Parse method.
 //
-// Parse behaves identical to the flag.FlagSet's Parse method except that if a flag
+// Parse behaves identical to the [flag.FlagSet.Parse] method except that if a flag
 // is not set then Parse will attempt to set that flag's value by looking up the
 // value of an environment variable. The environment variable is looked up using
 // the output of Parser.FlagNameToEnvVarName.
@@ -72,9 +71,9 @@ func (p *Parser) Parse(fs *flag.FlagSet, args []string) error {
 }
 
 // Usage returns a function that should be set on fs's Usage field before calling
-// Parser.Parse with fs as an argument.
+// [Parser.Parse] with fs as an argument.
 //
-// The behaviour is similar to flag.FlagSet's default Usage, however there is additional
+// The behaviour is similar to [flag.FlagSet]'s default Usage, however there is additional
 // detail around the environment variables that will be looked up.
 func (p *Parser) Usage(fs *flag.FlagSet) func() {
 	return func() {
@@ -102,10 +101,10 @@ func (p *Parser) Usage(fs *flag.FlagSet) func() {
 }
 
 // FlagError will output a message with err as detail for the flag named flagName
-// and then return an error. This is in similar spirit to flag.FlagSet.Usage, where
+// and then return an error. This is in similar spirit to [flag.FlagSet.Usage], where
 // usage is also output except in this case only usage for the one flag is output.
 //
-// This is ideally used to output validation errors after successfully calling Parser.Parse
+// This is ideally used to output validation errors after successfully calling [Parser.Parse]
 // with fs as an argument.
 func (p *Parser) FlagError(fs *flag.FlagSet, flagName string, err error) error {
 	f := fs.Lookup(flagName)

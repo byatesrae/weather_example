@@ -69,7 +69,7 @@ func WithResultCacheTTL(resultCacheTTL time.Duration) func(o *NewOptions) {
 	}
 }
 
-// WithGetLoggerFromContext sets a function used to retrieve a logr.Logger from
+// WithGetLoggerFromContext sets a function used to retrieve a [logr.Logger] from
 // the context.
 func WithGetLoggerFromContext(getLoggerFromContext func(ctx context.Context) logr.Logger) func(o *NewOptions) {
 	return func(o *NewOptions) {
@@ -77,7 +77,7 @@ func WithGetLoggerFromContext(getLoggerFromContext func(ctx context.Context) log
 	}
 }
 
-// New creates a new Queryer.
+// New creates a new [Queryer].
 func New(providers []Provider, cache Cache, overrides ...func(o *NewOptions)) *Queryer {
 	noopLogger := nooplogr.New()
 

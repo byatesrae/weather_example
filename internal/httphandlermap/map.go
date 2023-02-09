@@ -14,13 +14,13 @@ import (
 type Map struct {
 	// KeyGenFunc is used on receipt of a request to generate a "key" for the map.
 	// The key is used to load a registered http Handler for invocation. See method
-	// Register().
+	// [Map.Register].
 	//
 	// The function takes a clone of the original request such that it might be used
 	// in generating the key. The request clone body is always nil.
 	KeyGenFunc func(*http.Request) any
 
-	// DefaultHandler is used if KeyGenFunc is nil or no handler is loaded.
+	// DefaultHandler is used if [Map.KeyGenFunc] is nil or no handler is loaded.
 	DefaultHandler http.HandlerFunc
 
 	// Contains all registered handlers.
@@ -35,8 +35,8 @@ func (m *Map) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 // Register can be used to register a handler for a given key. Should that key be
-// generated during Map.ServeHTTP then this handler will be invoked to serve the
-// request. See field Map.KeyGenFunc.
+// generated during [Map.ServeHTTP] then this handler will be invoked to serve the
+// request. See field [Map.KeyGenFunc].
 //
 // The first value returned can be used to unregister the handler.
 //

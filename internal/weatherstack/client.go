@@ -10,20 +10,20 @@ import (
 	"github.com/byatesrae/weather/internal/nooplogr"
 )
 
-// NewOptions are the options for the New function.
+// NewOptions are the options for the [New] function.
 type NewOptions struct {
 	client               HTTPClient
 	getLoggerFromContext func(ctx context.Context) logr.Logger
 }
 
-// NewWithHTTPClient sets the HTTPClient in the New function.
+// NewWithHTTPClient sets the HTTPClient in the [New] function.
 func NewWithHTTPClient(client HTTPClient) func(*NewOptions) {
 	return func(o *NewOptions) {
 		o.client = client
 	}
 }
 
-// WithGetLoggerFromContext sets a function used to retrieve a logr.Logger from
+// WithGetLoggerFromContext sets a function used to retrieve a [logr.Logger] from
 // the context.
 func WithGetLoggerFromContext(getLoggerFromContext func(ctx context.Context) logr.Logger) func(o *NewOptions) {
 	return func(o *NewOptions) {
@@ -39,7 +39,7 @@ type Client struct {
 	getLoggerFromContext func(ctx context.Context) logr.Logger
 }
 
-// New creates a new client.
+// New creates a new [Client].
 func New(endpointURL, accessKey string, optionOverrides ...func(*NewOptions)) *Client {
 	noopLogger := nooplogr.New()
 

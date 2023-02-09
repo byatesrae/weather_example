@@ -20,7 +20,7 @@ type MemoryCache struct {
 	m sync.Mutex
 }
 
-// New creates a new MemoryCache.
+// New creates a new [MemoryCache].
 func New() *MemoryCache {
 	return &MemoryCache{
 		values: make(map[interface{}]*cacheEntry),

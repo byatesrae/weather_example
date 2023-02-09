@@ -1,4 +1,4 @@
-// Package nooplogr allows the instantiation of a no-op implementation of logr.
+// Package nooplogr allows the instantiation of a no-op implementation of [logr.Logger].
 package nooplogr
 
 import "github.com/go-logr/logr"
@@ -12,7 +12,7 @@ func (s noopSink) Error(err error, msg string, keysAndValues ...interface{}) {}
 func (s noopSink) WithValues(keysAndValues ...interface{}) logr.LogSink      { return s }
 func (s noopSink) WithName(name string) logr.LogSink                         { return s }
 
-// New returns a noop logr (with an underlying noop sink).
+// New returns a no-op [logr.Logger].
 func New() logr.Logger {
 	return logr.New(noopSink{})
 }
