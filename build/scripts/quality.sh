@@ -8,8 +8,8 @@ set -e
 echo " * Running quality checks ..."
 echo
 
-./build/env.sh
-./build/clean.sh
-./build/lint.sh
-./build/test.sh
-./build/generate-test-coverage.sh
+./build/scripts/env.sh
+./build/scripts/clean.sh
+./build/scripts/lint.sh
+./build/scripts/test.sh
+./build/scripts/generate-test-coverage.sh

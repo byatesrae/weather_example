@@ -1,17 +1,17 @@
 #!/bin/bash
 
-# Runs ./build/generate-test-coverage.sh dockerized.
+# Runs ./build/scripts/env.sh dockerized.
 # Intended to be invoked from the repository root.
 
 set -e
 
-source ./build/docker/common.sh
+source ./build/scripts/docker/common.sh
 
 read_env_file
 
 trap reset_owner_of_files ERR
 
-echo " * Running clean dockerised ..."
+echo " * Running env dockerised ..."
 docker run \
     --rm \
     -v ${PWD}:/src \
@@ -19,6 +19,6 @@ docker run \
     --workdir="/src" \
     --entrypoint /bin/bash \
     $BUILD_IMAGE \
-    "-c" "./build/docker/config.sh; ./build/generate-test-coverage.sh;" 
+    "-c" "./build/scripts/docker/config.sh; ./build/scripts/env.sh;" 
 
 reset_owner_of_files

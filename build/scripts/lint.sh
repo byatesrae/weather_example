@@ -8,7 +8,7 @@ set -e
 echo " * Linting ..."
 echo
 
-$(go env GOPATH)/bin/golangci-lint run
+$(go env GOPATH)/bin/golangci-lint run -c ./build/.golangci.yml
 
 echo
 echo " * Done."

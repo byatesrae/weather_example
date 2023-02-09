@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Runs ./build/docs.sh dockerized.
+# Runs ./build/scripts/docs.sh dockerized.
 # Intended to be invoked from the repository root.
 
 set -e
 
-source ./build/docker/common.sh
+source ./build/scripts/docker/common.sh
 
 read_env_file
 
@@ -18,4 +18,4 @@ docker run \
     --entrypoint /bin/bash \
     -p $DOCS_PORT:$DOCS_PORT \
     $BUILD_IMAGE \
-    "-c" "./build/docker/config.sh; ./build/docs.sh;" 
+    "-c" "./build/scripts/docker/config.sh; ./build/scripts/docs.sh;" 
