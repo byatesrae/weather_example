@@ -13,7 +13,7 @@ The original test criteria were something along the lines of as follows:
 - Document tradeoffs & future improvements.
 
 ## Requires
-* Dependencies outlined in [./build/docker/Dockerfile](./build/docker/Dockerfile).
+* Dependencies outlined in [the Go Build dockerfile](https://github.com/byatesrae/docker.go_build/blob/v1.2.0/Dockerfile).
 * Docker (tested with 20.10.12).
 
 ## Setup
