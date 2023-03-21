@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-logr/logr"
 
-	"github.com/byatesrae/weather/internal/nooplogr"
+	"github.com/byatesrae/weather/internal/platform/nooplogr"
 )
 
 // NewOptions are the options for the [New] function.
