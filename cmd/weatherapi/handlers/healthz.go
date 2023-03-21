@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-logr/logr"
 
-	"github.com/byatesrae/weather/internal/nooplogr"
+	"github.com/byatesrae/weather/internal/platform/nooplogr"
 )
 
 // NewHealthzHandler creates a new handler that can be used to check the health status of the application.

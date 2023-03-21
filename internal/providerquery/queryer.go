@@ -9,7 +9,7 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"github.com/byatesrae/weather"
-	"github.com/byatesrae/weather/internal/nooplogr"
+	"github.com/byatesrae/weather/internal/platform/nooplogr"
 )
 
 const (
