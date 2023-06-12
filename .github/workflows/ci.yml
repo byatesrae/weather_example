@@ -10,4 +10,4 @@ on:
   
 jobs:
   ci-workflow:
-    uses: byatesrae/go_build/.github/workflows/ci.yml@master
+    uses: byatesrae/go_build/.github/workflows/ci.yml@refactor/fix-pipelines-not-creating-env
